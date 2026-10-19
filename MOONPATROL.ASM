@@ -11,11 +11,18 @@
 
 .DATA
 
-titulo1 DB ' __  __  ___  ___  _   _   ', '$'
-titulo2 DB '|  \/  |/ _ \/ _ \| \ | |  ', '$'
-titulo3 DB '| |\/| | | | | | |  \| |  ', '$'
-titulo4 DB '| |  | | |_| | |_| | |\  |  ', '$'
-titulo5 DB '|_|  |_|\___/ \___/|_| \_|  ', '$'
+; Titulos sem espacos desnecessarios nas pontas (Carregamento ultra-rapido)
+titulo1  DB '__  __', '$'
+titulo2  DB '|  \/  |', '$'
+titulo3  DB '| \  / | ___   ___  _ __', '$'
+titulo4  DB '| |\/| |/ _ \ / _ \|  _ \', '$'
+titulo5  DB '| |  | | (_) | (_) | | | |', '$'
+titulo6  DB '|_|__|_|\___/ \___/|_| |_|_', '$'
+titulo7  DB '|  __ \    | |           | |', '$'
+titulo8  DB '| |__) |_ _| |_ _ __ ___ | |', '$'
+titulo9  DB '|  ___/ _` | __| __//_  \| |', '$'
+titulo10 DB '| |  | (_| | |_| | | (_) | |', '$'
+titulo11 DB '|_|   \__,_|\__|_|  \___/|_|', '$'
 
 jogarTxt  DB 'JOGAR', '$'
 sairTxt   DB 'SAIR', '$'
@@ -24,7 +31,7 @@ msgVolta  DB 'Pressione qualquer tecla para voltar.', '$'
 msgSair   DB 'Obrigado por jogar!', '$'
 
 selecao DB 0
-animX   DW 10    ; Posição X em pixels (0..319)
+animX   DW 10    ; Posicao X em pixels (0..319)
 
 .CODE
 
@@ -43,34 +50,36 @@ MENU_PRINCIPAL:
     MOV AX, 0013h
     INT 10h
 
-    CALL DESENHAR_MENU
+    ; Desenha o titulo FIXO uma unica vez
+    CALL DESENHAR_TITULO
+    CALL DESENHAR_OPCOES
 
 CICLO_MENU:
 
     CALL ANIMAR_ELEMENTOS
 
-    ; Verifica se existe tecla disponivel
+    ; Verifica se existe tecla disponivel sem bloquear a animacao
     MOV AH, 01h
     INT 16h
-    JZ CICLO_MENU
+    JZ CICLO_MENU       ; Se nao houver tecla, continua a animacao
 
-    ; Le a tecla
+    ; Le a tecla do buffer (AH = Scan Code, AL = ASCII)
     XOR AH, AH
     INT 16h
 
-    ; Seta para cima
+    ; Seta para cima (Scan code 48h)
     CMP AH, 48h
     JE TECLA_CIMA
 
-    ; Seta para baixo
+    ; Seta para baixo (Scan code 50h)
     CMP AH, 50h
     JE TECLA_BAIXO
 
-    ; ENTER
+    ; ENTER (ASCII 13)
     CMP AL, 13
     JE TECLA_ENTER
 
-    ; ESC
+    ; ESC (ASCII 27)
     CMP AL, 27
     JE ENCERRAR
 
@@ -78,12 +87,19 @@ CICLO_MENU:
 
 TECLA_CIMA:
     MOV selecao, 0
-    CALL DESENHAR_MENU
-    JMP CICLO_MENU
+    CALL DESENHAR_OPCOES
+    JMP ESPERA_LIBERAR_TECLA
 
 TECLA_BAIXO:
     MOV selecao, 1
-    CALL DESENHAR_MENU
+    CALL DESENHAR_OPCOES
+    JMP ESPERA_LIBERAR_TECLA
+
+ESPERA_LIBERAR_TECLA:
+    ; Pequena pausa para evitar leitura repetida da mesma tecla em milissegundos
+    MOV CX, 2000
+PAUSA_TECLA:
+    LOOP PAUSA_TECLA
     JMP CICLO_MENU
 
 TECLA_ENTER:
@@ -114,7 +130,7 @@ ABRIR_JOGO:
     MOV AH, 09h
     INT 21h
 
-    ; Aguarda uma tecla
+    ; Aguarda uma tecla para retornar
     XOR AH, AH
     INT 16h
 
@@ -126,7 +142,7 @@ ABRIR_JOGO:
 
 ENCERRAR:
 
-    ; Retorna ao modo texto padrao
+    ; Retorna ao modo texto padrao ao sair
     MOV AX, 0003h
     INT 10h
 
@@ -153,18 +169,15 @@ PLOT_PIXEL PROC NEAR
     PUSH ES
     PUSH DI
 
-    ; Define ES para o segmento de memoria de video
     MOV BX, 0A000h
     MOV ES, BX
 
-    ; Calcula Offset: DI = (Y * 320) + X
-    MOV AX, DX          ; Coloca Y em AX (AX = Y)
-    MOV BX, 320         ; BX = 320
-    MUL BX              ; DX:AX = AX * BX  (Y * 320)
-    MOV DI, AX          ; DI = resultado de (Y * 320)
-    ADD DI, CX          ; DI = (Y * 320) + X
+    MOV AX, DX          ; Y
+    MOV BX, 320
+    MUL BX              ; Y * 320
+    MOV DI, AX
+    ADD DI, CX          ; (Y * 320) + X
 
-    ; Escreve a cor na VRAM
     MOV ES:[DI], AL
 
     POP DI
@@ -179,10 +192,7 @@ PLOT_PIXEL ENDP
 
 ; ============================================================
 ; Rotina: DESENHAR_RETANGULO
-; Entrada:
-;   CX = X1, DX = Y1 (Canto superior esquerdo)
-;   BX = Largura, SI = Altura
-;   AL = Cor
+; Entrada: CX = X, DX = Y, BX = Largura, SI = Altura, AL = Cor
 ; ============================================================
 
 DESENHAR_RETANGULO PROC NEAR
@@ -194,11 +204,11 @@ DESENHAR_RETANGULO PROC NEAR
     PUSH SI
     PUSH DI
 
-    MOV DI, SI          ; Salva altura em DI (contador vertical)
+    MOV DI, SI
 
 LINHA_Y:
-    PUSH CX             ; Salva X inicial
-    PUSH BX             ; Salva largura (contador horizontal)
+    PUSH CX
+    PUSH BX
 
 COLUNA_X:
     CALL PLOT_PIXEL
@@ -208,7 +218,7 @@ COLUNA_X:
 
     POP BX
     POP CX
-    INC DX              ; Proxima linha Y
+    INC DX
     DEC DI
     JNZ LINHA_Y
 
@@ -275,8 +285,7 @@ DESENHAR_CARACTERE_COR ENDP
 
 ; ============================================================
 ; Rotina: DESENHAR_LINHA_HORIZ_COR
-; Entrada: DH = linha, DL = coluna inicial, AL = caractere, 
-;          BL = cor, CX = quantidade
+; Entrada: DH = linha, DL = coluna, AL = caractere, BL = cor, CX = qtd
 ; ============================================================
 
 DESENHAR_LINHA_HORIZ_COR PROC NEAR
@@ -295,180 +304,253 @@ DESENHAR_LINHA_HORIZ_COR PROC NEAR
 
     RET
 
-DESENHAR_LINHA_HORIZ_COR ENDP
+DESENHAR_LINHA_HORIZ_COR ENDP   
 
 
 ; ============================================================
-; Rotina: DESENHAR_MENU
-; Funcao: Desenha a interface com caixas ASCII formatadas
+; Rotina: IMPRIMIR_TEXTO_COR
+; Entrada: DH = linha, DL = coluna, SI = string ($), BL = cor
 ; ============================================================
 
-DESENHAR_MENU PROC NEAR
+IMPRIMIR_TEXTO_COR PROC NEAR
+
+    PUSH AX
+    PUSH BX
+    PUSH DX
+    PUSH SI
+
+PROXIMO_CHAR:
+    MOV AL, [SI]
+    CMP AL, '$'
+    JE FIM_TEXTO
+
+    CALL DESENHAR_CARACTERE_COR
+    INC DL              ; Avanca coluna
+    INC SI              ; Proximo caractere
+    JMP PROXIMO_CHAR
+
+FIM_TEXTO:
+    POP SI
+    POP DX
+    POP BX
+    POP AX
+
+    RET
+
+IMPRIMIR_TEXTO_COR ENDP
+
+
+; ============================================================
+; Rotina: DESENHAR_TITULO
+; Funcao: Desenha as 11 linhas do titulo alinhadas
+; ============================================================
+
+DESENHAR_TITULO PROC NEAR
+
+    PUSH AX
+    PUSH BX
+    PUSH DX
+    PUSH SI
+
+    MOV BL, 0Ah         ; Verde claro
+
+    ; Linha 1
+    MOV DH, 0
+    MOV DL, 6
+    MOV SI, OFFSET titulo1
+    CALL IMPRIMIR_TEXTO_COR
+
+    ; Linha 2
+    MOV DH, 1
+    MOV DL, 5
+    MOV SI, OFFSET titulo2
+    CALL IMPRIMIR_TEXTO_COR
+
+    ; Linha 3
+    MOV DH, 2
+    MOV DL, 5
+    MOV SI, OFFSET titulo3
+    CALL IMPRIMIR_TEXTO_COR
+
+    ; Linha 4
+    MOV DH, 3
+    MOV DL, 5
+    MOV SI, OFFSET titulo4
+    CALL IMPRIMIR_TEXTO_COR
+
+    ; Linha 5
+    MOV DH, 4
+    MOV DL, 5
+    MOV SI, OFFSET titulo5
+    CALL IMPRIMIR_TEXTO_COR
+
+    ; Linha 6
+    MOV DH, 5
+    MOV DL, 5
+    MOV SI, OFFSET titulo6
+    CALL IMPRIMIR_TEXTO_COR
+
+    ; Linha 7
+    MOV DH, 6
+    MOV DL, 5
+    MOV SI, OFFSET titulo7
+    CALL IMPRIMIR_TEXTO_COR
+
+    ; Linha 8
+    MOV DH, 7
+    MOV DL, 5
+    MOV SI, OFFSET titulo8
+    CALL IMPRIMIR_TEXTO_COR
+
+    ; Linha 9
+    MOV DH, 8
+    MOV DL, 5
+    MOV SI, OFFSET titulo9
+    CALL IMPRIMIR_TEXTO_COR
+
+    ; Linha 10
+    MOV DH, 9
+    MOV DL, 5
+    MOV SI, OFFSET titulo10
+    CALL IMPRIMIR_TEXTO_COR
+
+    ; Linha 11
+    MOV DH, 10
+    MOV DL, 5
+    MOV SI, OFFSET titulo11
+    CALL IMPRIMIR_TEXTO_COR
+
+    POP SI
+    POP DX
+    POP BX
+    POP AX
+
+    RET
+
+DESENHAR_TITULO ENDP
+
+
+; ============================================================
+; Rotina: DESENHAR_OPCOES
+; Funcao: Desenha/Atualiza as caixas JOGAR e SAIR
+; ============================================================
+
+DESENHAR_OPCOES PROC NEAR
 
     PUSH AX
     PUSH BX
     PUSH CX
     PUSH DX
 
-    ; Re-inicializa tela em Modo 13h
-    MOV AX, 0013h
-    INT 10h
-
-    ; Titulo em ASCII Art
-    MOV DH, 2
-    MOV DL, 6
-    CALL POSICIONAR_CURSOR
-    MOV DX, OFFSET titulo1
-    MOV AH, 09h
-    INT 21h
-
-    MOV DH, 3
-    MOV DL, 6
-    CALL POSICIONAR_CURSOR
-    MOV DX, OFFSET titulo2
-    MOV AH, 09h
-    INT 21h
-
-    MOV DH, 4
-    MOV DL, 6
-    CALL POSICIONAR_CURSOR
-    MOV DX, OFFSET titulo3
-    MOV AH, 09h
-    INT 21h
-
-    MOV DH, 5
-    MOV DL, 6
-    CALL POSICIONAR_CURSOR
-    MOV DX, OFFSET titulo4
-    MOV AH, 09h
-    INT 21h
-
-    MOV DH, 6
-    MOV DL, 6
-    CALL POSICIONAR_CURSOR
-    MOV DX, OFFSET titulo5
-    MOV AH, 09h
-    INT 21h
-
     ; ---------------- CAIXA JOGAR ----------------
-    MOV BL, 0Fh              ; Branco
+    MOV BL, 0Fh              ; Branco por padrao
     CMP selecao, 0
     JNE JOGAR_COR_OK
     MOV BL, 0Ch              ; Vermelho claro se selecionado
 
 JOGAR_COR_OK:
 
-    ; Linha Superior (+ -------- +)
     MOV DH, 12
     MOV DL, 14
-    MOV AL, 218              ; +
+    MOV AL, 218
     CALL DESENHAR_CARACTERE_COR
 
     MOV DH, 12
     MOV DL, 15
-    MOV AL, 196              ; -
+    MOV AL, 196
     MOV CX, 10
     CALL DESENHAR_LINHA_HORIZ_COR
 
     MOV DH, 12
     MOV DL, 25
-    MOV AL, 191              ; +
+    MOV AL, 191
     CALL DESENHAR_CARACTERE_COR
 
-    ; Meio (¦  JOGAR   ¦)
     MOV DH, 13
     MOV DL, 14
-    MOV AL, 179              ; ¦
+    MOV AL, 179
     CALL DESENHAR_CARACTERE_COR
 
     MOV DH, 13
     MOV DL, 17
-    CALL POSICIONAR_CURSOR
-    MOV DX, OFFSET jogarTxt
-    MOV AH, 09h
-    INT 21h
+    MOV SI, OFFSET jogarTxt
+    CALL IMPRIMIR_TEXTO_COR
 
     MOV DH, 13
     MOV DL, 25
-    MOV AL, 179              ; ¦
+    MOV AL, 179
     CALL DESENHAR_CARACTERE_COR
 
-    ; Linha Inferior (+ -------- +)
     MOV DH, 14
     MOV DL, 14
-    MOV AL, 192              ; +
+    MOV AL, 192
     CALL DESENHAR_CARACTERE_COR
 
     MOV DH, 14
     MOV DL, 15
-    MOV AL, 196              ; -
+    MOV AL, 196
     MOV CX, 10
     CALL DESENHAR_LINHA_HORIZ_COR
 
     MOV DH, 14
     MOV DL, 25
-    MOV AL, 217              ; +
+    MOV AL, 217
     CALL DESENHAR_CARACTERE_COR
 
 
     ; ---------------- CAIXA SAIR ----------------
-    MOV BL, 0Fh              ; Branco
+    MOV BL, 0Fh              ; Branco por padrao
     CMP selecao, 1
     JNE SAIR_COR_OK
     MOV BL, 0Ch              ; Vermelho claro se selecionado
 
 SAIR_COR_OK:
 
-    ; Linha Superior (+ -------- +)
-    MOV DH, 17
+    MOV DH, 16
     MOV DL, 14
-    MOV AL, 218              ; +
+    MOV AL, 218
     CALL DESENHAR_CARACTERE_COR
 
-    MOV DH, 17
+    MOV DH, 16
     MOV DL, 15
-    MOV AL, 196              ; -
+    MOV AL, 196
     MOV CX, 10
     CALL DESENHAR_LINHA_HORIZ_COR
 
-    MOV DH, 17
+    MOV DH, 16
     MOV DL, 25
-    MOV AL, 191              ; +
+    MOV AL, 191
     CALL DESENHAR_CARACTERE_COR
 
-    ; Meio (¦   SAIR    ¦)
-    MOV DH, 18
+    MOV DH, 17
     MOV DL, 14
-    MOV AL, 179              ; ¦
+    MOV AL, 179
     CALL DESENHAR_CARACTERE_COR
 
-    MOV DH, 18
+    MOV DH, 17
     MOV DL, 17
-    CALL POSICIONAR_CURSOR
-    MOV DX, OFFSET sairTxt
-    MOV AH, 09h
-    INT 21h
+    MOV SI, OFFSET sairTxt
+    CALL IMPRIMIR_TEXTO_COR
+
+    MOV DH, 17
+    MOV DL, 25
+    MOV AL, 179
+    CALL DESENHAR_CARACTERE_COR
 
     MOV DH, 18
-    MOV DL, 25
-    MOV AL, 179              ; ¦
-    CALL DESENHAR_CARACTERE_COR
-
-    ; Linha Inferior (+ -------- +)
-    MOV DH, 19
     MOV DL, 14
-    MOV AL, 192              ; +
+    MOV AL, 192
     CALL DESENHAR_CARACTERE_COR
 
-    MOV DH, 19
+    MOV DH, 18
     MOV DL, 15
-    MOV AL, 196              ; -
+    MOV AL, 196
     MOV CX, 10
     CALL DESENHAR_LINHA_HORIZ_COR
 
-    MOV DH, 19
+    MOV DH, 18
     MOV DL, 25
-    MOV AL, 217              ; +
+    MOV AL, 217
     CALL DESENHAR_CARACTERE_COR
 
     POP DX
@@ -478,12 +560,12 @@ SAIR_COR_OK:
 
     RET
 
-DESENHAR_MENU ENDP
+DESENHAR_OPCOES ENDP
 
 
 ; ============================================================
 ; Rotina: ANIMAR_ELEMENTOS
-; Funcao: Desenha elementos gráficos via VRAM (A000h)
+; Funcao: Anima o jipe e a nave na parte inferior da tela
 ; ============================================================
 
 ANIMAR_ELEMENTOS PROC NEAR
@@ -494,28 +576,26 @@ ANIMAR_ELEMENTOS PROC NEAR
     PUSH DX
     PUSH SI
 
-    ; Pausa
-    MOV CX, 20000
+    MOV CX, 4000
 ATRASO:
     LOOP ATRASO
 
-    ; Apaga posição anterior desenhando um bloco preto (cor 0)
+    ; Apaga posicao anterior
     MOV CX, animX
-    MOV DX, 175
+    MOV DX, 188
     MOV BX, 12
     MOV SI, 8
-    MOV AL, 0            ; Preto
+    MOV AL, 0
     CALL DESENHAR_RETANGULO
 
-    ; Apaga naves anteriores
     MOV CX, animX
     ADD CX, 30
-    MOV DX, 160
+    MOV DX, 180
     MOV BX, 10
     MOV SI, 6
     CALL DESENHAR_RETANGULO
 
-    ; Incrementa X em pixels
+    ; Avanca X
     ADD animX, 2
     CMP animX, 270
     JB POSICAO_OK
@@ -524,18 +604,18 @@ ATRASO:
 
 POSICAO_OK:
 
-    ; Desenha Jipe (Bloco Amarelo - Cor 0Eh)
+    ; Desenha Jipe (Amarelo)
     MOV CX, animX
-    MOV DX, 175
+    MOV DX, 188
     MOV BX, 12
     MOV SI, 8
     MOV AL, 0Eh
     CALL DESENHAR_RETANGULO
 
-    ; Desenha Nave (Bloco Ciano - Cor 0Bh)
+    ; Desenha Nave (Ciano)
     MOV CX, animX
     ADD CX, 30
-    MOV DX, 160
+    MOV DX, 180
     MOV BX, 10
     MOV SI, 6
     MOV AL, 0Bh
