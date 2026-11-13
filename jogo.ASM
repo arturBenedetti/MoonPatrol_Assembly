@@ -300,46 +300,33 @@ MAIN ENDP
 ; ============================================================
 
 PLOT_PIXEL PROC NEAR
-
-    PLOT_PIXEL PROC NEAR
-
     PUSH AX
     PUSH BX
     PUSH DX
     PUSH ES
     PUSH DI
+    PUSH SI
 
-    MOV BL, AL          ; Guarda a cor em BL
-
+    MOV SI, AX
     MOV AX, 0A000h
     MOV ES, AX
 
     MOV AX, DX
     MOV BX, 320
     MUL BX
-
     MOV DI, AX
     ADD DI, CX
 
-    MOV ES:[DI], BL
+    MOV AX, SI
+    MOV ES:[DI], AL
 
+    POP SI
     POP DI
     POP ES
     POP DX
     POP BX
     POP AX
-
     RET
-
-PLOT_PIXEL ENDP
-
-    POP DI
-    POP ES
-    POP BX
-    POP AX
-
-    RET
-
 PLOT_PIXEL ENDP
 
 ; ============================================================
