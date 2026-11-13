@@ -30,6 +30,51 @@ msgJogo   DB 'INICIANDO MOON PATROL...', '$'
 msgVolta  DB 'Pressione qualquer tecla para voltar.', '$'
 msgSair   DB 'Obrigado por jogar!', '$'
 
+relogio_map DB 7, 7, 0Eh, 0Eh, 0Eh, 7, 7
+            DB 7, 0Eh, 0Eh, 00h, 0Eh, 0Eh, 7
+            DB 0Eh, 0Eh, 0Eh, 00h, 0Eh, 0Eh, 0Eh
+            DB 0Eh, 0Eh, 0Eh, 00h, 00h, 00h, 0Eh
+            DB 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh
+            DB 7, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 7
+            DB 7, 7, 0Eh, 0Eh, 0Eh, 7, 7
+            DB 7, 7, 7, 0Eh, 7, 7, 7
+            
+vida1_map DB 7, 7, 8, 8, 7, 7, 8, 8, 8, 8, 7, 7, 8, 8, 8, 8, 7, 7
+          DB 7, 0Ch, 0Ch, 8, 0Ch, 0Ch, 7, 8, 8, 8, 8, 7, 7, 8, 8, 8, 8, 7
+          DB 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 7, 7, 8, 8, 8, 8
+          DB 0Ch, 0Ch, 0Ch, 8, 8, 0Ch, 0Ch, 0Ch, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8
+          DB 0Ch, 0Ch, 0Ch, 8, 8, 0Ch, 0Ch, 0Ch, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8
+          DB 0Ch, 0Ch, 0Ch, 8, 8, 0Ch, 0Ch, 0Ch, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8
+          DB 7, 0Ch, 0Ch, 8, 0Ch, 0Ch, 7, 8, 8, 8, 8, 7, 7, 8, 8, 8, 8, 7
+          DB 7, 7, 8, 8, 7, 7, 8, 7, 0Ch, 0Ch, 7, 7, 8, 7, 0Ch, 0Ch, 7, 7
+          DB 7, 7, 7, 8, 7, 7, 7, 7, 7, 0Ch, 7, 7, 7, 7, 7, 0Ch, 7, 7
+          DB 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
+          DB 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
+          
+vida2_map DB 7, 7, 8, 8, 7, 7, 8, 7, 7, 8, 8, 7, 7, 8, 8, 8, 8, 7
+          DB 7, 0Ch, 0Ch, 8, 0Ch, 0Ch, 7, 7, 0Ch, 0Ch, 8, 0Ch, 0Ch, 7, 8, 8, 8, 7
+          DB 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 7, 7, 8, 8
+          DB 0Ch, 0Ch, 0Ch, 8, 8, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 8, 8, 8, 8
+          DB 0Ch, 0Ch, 0Ch, 8, 8, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 8, 8, 8, 8
+          DB 0Ch, 0Ch, 0Ch, 8, 8, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 8, 8, 8, 8
+          DB 7, 0Ch, 0Ch, 8, 0Ch, 0Ch, 7, 7, 0Ch, 0Ch, 8, 0Ch, 0Ch, 7, 8, 8, 8, 7
+          DB 7, 7, 8, 8, 7, 7, 8, 7, 7, 8, 8, 7, 7, 8, 7, 0Ch, 0Ch, 7
+          DB 7, 7, 7, 8, 7, 7, 7, 7, 7, 7, 8, 7, 7, 7, 7, 7, 0Ch, 7
+          DB 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
+          DB 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
+          
+vida3_map DB 7, 7, 8, 8, 7, 7, 8, 7, 7, 8, 8, 7, 7, 8, 7, 7, 8, 8
+          DB 7, 0Ch, 0Ch, 8, 0Ch, 0Ch, 7, 7, 0Ch, 0Ch, 8, 0Ch, 0Ch, 7, 7, 0Ch, 0Ch, 8
+          DB 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8
+          DB 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch
+          DB 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch
+          DB 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch
+          DB 7, 0Ch, 0Ch, 8, 0Ch, 0Ch, 7, 7, 0Ch, 0Ch, 8, 0Ch, 0Ch, 7, 7, 0Ch, 0Ch, 8
+          DB 7, 7, 8, 8, 7, 7, 8, 7, 7, 8, 8, 7, 7, 8, 7, 7, 8, 8
+          DB 7, 7, 7, 8, 7, 7, 7, 7, 7, 7, 8, 7, 7, 7, 7, 7, 7, 8
+          DB 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
+          DB 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
+
 selecao DB 0
 animX   DW 10    ; Posicao X em pixels (0..319)
 
@@ -41,7 +86,7 @@ animX   DW 10    ; Posicao X em pixels (0..319)
 
 MAIN PROC NEAR
 
-    MOV AX, @DATA
+    MOV AX, @data
     MOV DS, AX
 
 MENU_PRINCIPAL:
@@ -292,19 +337,24 @@ DESENHAR_LINHA_HORIZ_COR PROC NEAR
 
     PUSH AX
     PUSH BX
+    PUSH CX         ; Salva o CX (quantidade) na pilha
 
     CALL POSICIONAR_CURSOR
+
+    POP CX          ; Recupera o CX com a quantidade correta para a INT 10h
+    PUSH CX         ; Guarda novamente para restaurar no final
 
     MOV AH, 09h
     MOV BH, 0
     INT 10h
 
+    POP CX          ; Limpa a pilha
     POP BX
     POP AX
 
     RET
 
-DESENHAR_LINHA_HORIZ_COR ENDP   
+DESENHAR_LINHA_HORIZ_COR ENDP  
 
 
 ; ============================================================
