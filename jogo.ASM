@@ -74,6 +74,62 @@ vida3_map DB 7, 7, 8, 8, 7, 7, 8, 7, 7, 8, 8, 7, 7, 8, 7, 7, 8, 8
           DB 7, 7, 7, 8, 7, 7, 7, 7, 7, 7, 8, 7, 7, 7, 7, 7, 7, 8
           DB 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
           DB 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
+          
+jipe_map DB 7, 7, 7, 7, 7, 7, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 7, 7, 7, 7, 7, 7, 7, 7
+         DB 7, 7, 7, 7, 0Ch, 0Ch, 0Ch, 0Ch, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 0Ch, 7, 7, 7, 7, 7, 7
+         DB 7, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Bh, 0Bh, 0Bh, 0Bh, 0Ch, 0Ch, 0Ch, 0Ch, 7, 7, 7
+         DB 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 7
+         DB 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 1, 1, 1, 1
+         DB 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 0Ch, 7, 7, 7
+         DB 7, 0Bh, 1, 1, 1, 0Bh, 7, 1, 1, 1, 0Bh, 7, 7, 7, 0Bh, 1, 1, 1, 0Bh, 7
+         DB 7, 1, 1, 1, 1, 1, 7, 1, 1, 1, 1, 1, 7, 7, 1, 1, 1, 1, 1, 7
+         DB 7, 1, 1, 1, 1, 1, 7, 1, 1, 1, 1, 1, 7, 7, 1, 1, 1, 1, 1, 7
+         DB 7, 0Bh, 1, 1, 1, 0Bh, 7, 0Bh, 1, 1, 1, 0Bh, 7, 7, 0Bh, 1, 1, 1, 0Bh, 7
+         
+nave1_map DB 7, 7, 7, 7, 7, 7, 0Bh, 0Bh, 7, 7, 7, 7, 7, 7
+          DB 7, 7, 7, 7, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 7, 7, 7, 7
+          DB 7, 7, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 7, 7
+          DB 7, 0Bh, 0Bh, 0Bh, 0Ch, 0Ch, 0Bh, 0Bh, 0Ch, 0Ch, 0Bh, 0Bh, 0Bh, 7
+          DB 7, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 7
+          DB 7, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 7
+          DB 0Eh, 0Eh, 0Eh, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 0Eh, 0Eh, 0Eh
+          DB 0Eh, 0Eh, 0Eh, 0Eh, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 0Eh, 0Eh, 0Eh, 0Eh
+          DB 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh
+          DB 7, 7, 0Ch, 0Ch, 7, 7, 7, 7, 7, 7, 0Ch, 0Ch, 7, 7
+          DB 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
+          DB 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
+          DB 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
+          DB 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
+          
+nave2_map DB 7, 7, 7, 7, 7, 0Bh, 0Bh, 0Bh, 0Bh, 7, 7, 7, 7, 7
+          DB 7, 7, 7, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 7, 7, 7
+          DB 7, 7, 7, 0Bh, 0Bh, 0Bh, 0Bh, 0Ch, 0Bh, 0Bh, 0Bh, 7, 7, 7
+          DB 7, 7, 7, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 7, 7, 7
+          DB 7, 7, 7, 7, 0Bh, 0Bh, 7, 7, 0Bh, 0Bh, 7, 7, 7, 7
+          DB 0Bh, 0Bh, 0Bh, 0Bh, 0Ch, 7, 7, 7, 7, 0Bh, 0Bh, 0Bh, 0Bh, 7
+          DB 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 7, 7, 0Ch, 0Ch, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh
+          DB 0Bh, 0Bh, 0Bh, 0Bh, 0Bh, 7, 7, 0Ch, 7, 0Bh, 0Bh, 0Bh, 0Bh, 0Bh
+          DB 7, 0Bh, 0Bh, 0Bh, 0Bh, 7, 7, 7, 7, 0Bh, 0Bh, 0Bh, 0Bh, 7
+          DB 7, 7, 0Bh, 0Bh, 7, 7, 7, 7, 7, 7, 0Bh, 0Bh, 7, 7
+          DB 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
+          DB 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
+          DB 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
+          DB 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
+          
+nave3_map DB 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
+          DB 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
+          DB 7, 7, 7, 7, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 7, 7, 7, 7, 7
+          DB 7, 7, 7, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 7, 7, 7, 7
+          DB 7, 7, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 7, 7
+          DB 7, 0Eh, 0Eh, 0Eh, 0Ch, 0Ch, 0Ch, 0Eh, 0Ch, 0Eh, 0Eh, 0Eh, 0Eh, 7
+          DB 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh
+          DB 7, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 7
+          DB 7, 7, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 7, 7
+          DB 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
+          DB 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
+          DB 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
+          DB 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
+          DB 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7
 
 selecao DB 0
 animX   DW 10    ; Posicao X em pixels (0..319)
