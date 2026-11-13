@@ -342,51 +342,6 @@ PLOT_PIXEL ENDP
 
 PLOT_PIXEL ENDP
 
-
-; ============================================================
-; Rotina: DESENHAR_RETANGULO
-; Entrada: CX = X, DX = Y, BX = Largura, SI = Altura, AL = Cor
-; ============================================================
-
-DESENHAR_RETANGULO PROC NEAR
-
-    PUSH AX
-    PUSH BX
-    PUSH CX
-    PUSH DX
-    PUSH SI
-    PUSH DI
-
-    MOV DI, SI
-
-LINHA_Y:
-    PUSH CX
-    PUSH BX
-
-COLUNA_X:
-    CALL PLOT_PIXEL
-    INC CX
-    DEC BX
-    JNZ COLUNA_X
-
-    POP BX
-    POP CX
-    INC DX
-    DEC DI
-    JNZ LINHA_Y
-
-    POP DI
-    POP SI
-    POP DX
-    POP CX
-    POP BX
-    POP AX
-
-    RET
-
-DESENHAR_RETANGULO ENDP
-
-
 ; ============================================================
 ; Rotina: POSICIONAR_CURSOR
 ; Entrada: DH = linha, DL = coluna
@@ -744,14 +699,12 @@ ATRASO:
     MOV BX, 12
     MOV SI, 8
     MOV AL, 0
-    CALL DESENHAR_RETANGULO
 
     MOV CX, animX
     ADD CX, 30
     MOV DX, 180
     MOV BX, 10
     MOV SI, 6
-    CALL DESENHAR_RETANGULO
 
     ; Avanca X
     ADD animX, 2
@@ -768,7 +721,6 @@ POSICAO_OK:
     MOV BX, 12
     MOV SI, 8
     MOV AL, 0Eh
-    CALL DESENHAR_RETANGULO
 
     ; Desenha Nave (Ciano)
     MOV CX, animX
@@ -777,7 +729,6 @@ POSICAO_OK:
     MOV BX, 10
     MOV SI, 6
     MOV AL, 0Bh
-    CALL DESENHAR_RETANGULO
 
     POP SI
     POP DX
