@@ -154,6 +154,42 @@ MENU_PRINCIPAL:
     ; Desenha o titulo FIXO uma unica vez
     CALL DESENHAR_TITULO
     CALL DESENHAR_OPCOES
+    
+    ; ==========================================================
+    ; EXIBIR JIPE E AS 3 NAVES NO MENU
+    ; ==========================================================
+    
+    ; 1. Desenhar o Jipe
+    MOV CX, 95
+    MOV DX, 100
+    MOV BX, 20
+    MOV SI, 10
+    MOV DI, OFFSET jipe_map
+    CALL DESENHAR_SPRITE
+
+    ; 2. Desenhar a Nave 1
+    MOV CX, 140
+    MOV DX, 100
+    MOV BX, 14
+    MOV SI, 14
+    MOV DI, OFFSET nave1_map
+    CALL DESENHAR_SPRITE
+
+    ; 3. Desenhar a Nave 2
+    MOV CX, 170
+    MOV DX, 100
+    MOV BX, 14
+    MOV SI, 14
+    MOV DI, OFFSET nave2_map
+    CALL DESENHAR_SPRITE
+
+    ; 4. Desenhar a Nave 3
+    MOV CX, 200
+    MOV DX, 100
+    MOV BX, 14
+    MOV SI, 14
+    MOV DI, OFFSET nave3_map
+    CALL DESENHAR_SPRITE
 
 CICLO_MENU:
 
@@ -265,21 +301,37 @@ MAIN ENDP
 
 PLOT_PIXEL PROC NEAR
 
+    PLOT_PIXEL PROC NEAR
+
     PUSH AX
     PUSH BX
+    PUSH DX
     PUSH ES
     PUSH DI
 
-    MOV BX, 0A000h
-    MOV ES, BX
+    MOV BL, AL          ; Guarda a cor em BL
 
-    MOV AX, DX          ; Y
+    MOV AX, 0A000h
+    MOV ES, AX
+
+    MOV AX, DX
     MOV BX, 320
-    MUL BX              ; Y * 320
-    MOV DI, AX
-    ADD DI, CX          ; (Y * 320) + X
+    MUL BX
 
-    MOV ES:[DI], AL
+    MOV DI, AX
+    ADD DI, CX
+
+    MOV ES:[DI], BL
+
+    POP DI
+    POP ES
+    POP DX
+    POP BX
+    POP AX
+
+    RET
+
+PLOT_PIXEL ENDP
 
     POP DI
     POP ES
@@ -736,5 +788,50 @@ POSICAO_OK:
     RET
 
 ANIMAR_ELEMENTOS ENDP
+
+; ============================================================
+; Rotina: DESENHAR_SPRITE
+; Entrada: CX = X, DX = Y, BX = Largura, SI = Altura, DI = Offset do Mapa
+; ============================================================
+DESENHAR_SPRITE PROC NEAR
+    PUSH AX
+    PUSH BX
+    PUSH CX
+    PUSH DX
+    PUSH SI
+    PUSH DI
+
+DESENHAR_LINHA_SPRITE:
+    PUSH CX
+    PUSH BX             ; Salva a largura inicial da linha
+
+COLUNA_SPRITE:
+    MOV AL, [DI]        ; L? a cor atual do pixel no mapa
+    CMP AL, 7           ; Se for 7 (cinza de fundo), n?o desenha (transparente)
+    JE PULAR_PIXEL_TRANSPARENTE
+    CALL PLOT_PIXEL     ; Desenha o pixel na tela
+
+PULAR_PIXEL_TRANSPARENTE:
+    INC CX              ; Avan?a o pixel na tela (X)
+    INC DI              ; Avan?a para o pr?ximo byte no mapa de dados
+    DEC BX              ; Decrementa o contador de largura
+    JNZ COLUNA_SPRITE
+
+    POP BX              ; Recupera a largura original
+    POP CX              ; Recupera o X inicial
+    INC DX              ; Vai para a pr?xima linha na tela (Y)
+    
+    ; O DI j? avan?ou a largura exata da linha anterior, ent?o n?o precisa recalcular
+    DEC SI              ; Decrementa o contador de altura
+    JNZ DESENHAR_LINHA_SPRITE
+
+    POP DI
+    POP SI
+    POP DX
+    POP CX
+    POP BX
+    POP AX
+    RET
+DESENHAR_SPRITE ENDP
 
 END MAIN
