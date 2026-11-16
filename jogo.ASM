@@ -30,14 +30,14 @@ msgJogo   DB 'INICIANDO MOON PATROL...', '$'
 msgVolta  DB 'Pressione qualquer tecla para voltar.', '$'
 msgSair   DB 'Obrigado por jogar!', '$'
 
-relogio_map DB 7, 7, 0Eh, 0Eh, 0Eh, 7, 7
-            DB 7, 0Eh, 0Eh, 00h, 0Eh, 0Eh, 7
+relogio_map DB 0, 0, 0Eh, 0Eh, 0Eh, 0, 0
+            DB 0, 0Eh, 0Eh, 00h, 0Eh, 0Eh, 0
             DB 0Eh, 0Eh, 0Eh, 00h, 0Eh, 0Eh, 0Eh
             DB 0Eh, 0Eh, 0Eh, 00h, 00h, 00h, 0Eh
             DB 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh
-            DB 7, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 7
-            DB 7, 7, 0Eh, 0Eh, 0Eh, 7, 7
-            DB 7, 7, 7, 0Eh, 7, 7, 7
+            DB 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh
+            DB 0, 0Eh, 0Eh, 0Eh, 0Eh, 0Eh, 0
+            DB 0, 0, 0Eh, 0Eh, 0Eh, 0, 0
             
 vida1_map DB 0, 0, 0, 0, 0, 0, 4, 4, 0, 0, 4, 4, 0, 0, 0, 0, 0, 0
           DB 0, 0, 0, 0, 0, 0, 4, 4, 0, 0, 4, 4, 0, 0, 0, 0, 0, 0
@@ -302,7 +302,15 @@ ABRIR_JOGO:
     MOV DX, 0          ; Posicao Y
     MOV BX, 18         ; Largura
     MOV SI, 11         ; Altura
-    MOV DI, OFFSET vida1_map
+    MOV DI, OFFSET vida3_map
+    CALL DESENHAR_SPRITE
+    
+    ; Desenha relogio
+    MOV CX, 250          ; Posicao X
+    MOV DX, 0          ; Posicao Y
+    MOV BX, 7         ; Largura
+    MOV SI, 8         ; Altura
+    MOV DI, OFFSET relogio_map
     CALL DESENHAR_SPRITE
 
     MOV DH, 10
