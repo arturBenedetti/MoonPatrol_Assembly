@@ -11,6 +11,12 @@
 
 .DATA
 
+jipeX   DW 0          ; posicao X atual do jipe
+jipeY   DW 95         ; centro vertical: (200-10)/2
+
+VELOCIDADE EQU 3      ; pixels por movimento
+LIMITE_X   EQU 140    ; metade da tela (160) - largura do jipe (20)
+
 ; Titulos sem espacos desnecessarios nas pontas (Carregamento ultra-rapido)
 titulo1  DB '__  __', '$'
 titulo2  DB '|  \/  |', '$'
@@ -301,33 +307,80 @@ ABRIR_JOGO:
     INT 10h
 
     ; Desenha 3 coracoes de vida
-    MOV CX, 0          ; Posicao X
-    MOV DX, 0          ; Posicao Y
-    MOV BX, 18         ; Largura
-    MOV SI, 11         ; Altura
+    MOV CX, 0
+    MOV DX, 0
+    MOV BX, 18
+    MOV SI, 11
     MOV DI, OFFSET vida3_map
     CALL DESENHAR_SPRITE
-    
+
     ; Desenha relogio
-    MOV CX, 250          ; Posicao X
-    MOV DX, 0          ; Posicao Y
-    MOV BX, 7         ; Largura
-    MOV SI, 8         ; Altura
+    MOV CX, 250
+    MOV DX, 0
+    MOV BX, 7
+    MOV SI, 8
     MOV DI, OFFSET relogio_map
     CALL DESENHAR_SPRITE
-    
-    ; Desenha a Nave 1 (centralizada verticalmente, na esquerda)
-    MOV CX, 0          ; Posicao X (bem na esquerda)
-    MOV DX, 93         ; Posicao Y (centro vertical: (200-14)/2)
-    MOV BX, 14         ; Largura
-    MOV SI, 14         ; Altura
-    MOV DI, OFFSET nave1_map
-    CALL DESENHAR_SPRITE
 
-    ; Aguarda uma tecla para retornar
-    XOR AH, AH
+    ; Posicao inicial do jipe
+    MOV jipeX, 0
+    CALL DESENHAR_JIPE
+
+LOOP_JOGO:
+
+    CALL ESPERA_VSYNC          ; sincroniza com a tela (reduz flicker)
+
+    MOV AH, 01h                ; ha tecla no buffer?
+    INT 16h
+    JZ LOOP_JOGO
+
+    XOR AH, AH                 ; le a tecla (AH = scan code, AL = ASCII)
     INT 16h
 
+    CMP AL, 27                 ; ESC volta ao menu
+    JE VOLTAR_MENU
+
+    CMP AH, 4Bh                ; seta esquerda
+    JE MOVER_ESQ
+
+    CMP AH, 4Dh                ; seta direita
+    JE MOVER_DIR
+
+    JMP LOOP_JOGO
+
+MOVER_ESQ:
+    CALL APAGAR_JIPE
+    MOV AX, jipeX
+    SUB AX, VELOCIDADE
+    JNC ESQ_OK                 ; se nao deu "borrow", continua
+    XOR AX, AX                 ; senao trava em 0
+ESQ_OK:
+    MOV jipeX, AX
+    JMP ATUALIZAR_JIPE
+
+MOVER_DIR:
+    CALL APAGAR_JIPE
+    MOV AX, jipeX
+    ADD AX, VELOCIDADE
+    CMP AX, LIMITE_X
+    JBE DIR_OK
+    MOV AX, LIMITE_X           ; trava na metade esquerda da tela
+DIR_OK:
+    MOV jipeX, AX
+
+ATUALIZAR_JIPE:
+    CALL DESENHAR_JIPE
+
+    ; Esvazia o buffer do teclado (evita o jipe "continuar andando" depois de soltar)
+DRENAR_TECLADO:
+    MOV AH, 01h
+    INT 16h
+    JZ LOOP_JOGO
+    XOR AH, AH
+    INT 16h
+    JMP DRENAR_TECLADO
+
+VOLTAR_MENU:
     JMP MENU_PRINCIPAL
 
 ; ============================================================
@@ -828,5 +881,117 @@ PULAR_PIXEL_TRANSPARENTE:
     POP AX
     RET
 DESENHAR_SPRITE ENDP
+
+; ============================================================
+; Rotina: DESENHAR_JIPE
+; Desenha o jipe em (jipeX, jipeY)
+; ============================================================
+DESENHAR_JIPE PROC NEAR
+    PUSH BX
+    PUSH CX
+    PUSH DX
+    PUSH SI
+    PUSH DI
+
+    MOV CX, jipeX
+    MOV DX, jipeY
+    MOV BX, 20
+    MOV SI, 10
+    MOV DI, OFFSET jipe_map
+    CALL DESENHAR_SPRITE
+
+    POP DI
+    POP SI
+    POP DX
+    POP CX
+    POP BX
+    RET
+DESENHAR_JIPE ENDP
+
+; ============================================================
+; Rotina: APAGAR_JIPE
+; Pinta de preto o retangulo 20x10 do jipe
+; ============================================================
+APAGAR_JIPE PROC NEAR
+    PUSH AX
+    PUSH BX
+    PUSH CX
+    PUSH DX
+    PUSH SI
+
+    MOV CX, jipeX
+    MOV DX, jipeY
+    MOV BX, 20
+    MOV SI, 10
+    CALL APAGAR_RETANGULO
+
+    POP SI
+    POP DX
+    POP CX
+    POP BX
+    POP AX
+    RET
+APAGAR_JIPE ENDP
+
+; ============================================================
+; Rotina: APAGAR_RETANGULO
+; Entrada: CX = X, DX = Y, BX = Largura, SI = Altura
+; Pinta de preto (cor 0)
+; ============================================================
+APAGAR_RETANGULO PROC NEAR
+    PUSH AX
+    PUSH BX
+    PUSH CX
+    PUSH DX
+    PUSH SI
+
+    XOR AL, AL              ; cor preta
+
+APAGAR_LINHA:
+    PUSH CX
+    PUSH BX
+
+APAGAR_COLUNA:
+    CALL PLOT_PIXEL
+    INC CX
+    DEC BX
+    JNZ APAGAR_COLUNA
+
+    POP BX
+    POP CX
+    INC DX
+    DEC SI
+    JNZ APAGAR_LINHA
+
+    POP SI
+    POP DX
+    POP CX
+    POP BX
+    POP AX
+    RET
+APAGAR_RETANGULO ENDP
+
+; ============================================================
+; Rotina: ESPERA_VSYNC
+; Aguarda o retrace vertical da VGA (porta 3DAh, bit 3)
+; ============================================================
+ESPERA_VSYNC PROC NEAR
+    PUSH AX
+    PUSH DX
+
+    MOV DX, 3DAh
+VS_FIM:
+    IN AL, DX
+    TEST AL, 08h
+    JNZ VS_FIM              ; espera sair do retrace atual
+VS_INICIO:
+    IN AL, DX
+    TEST AL, 08h
+    JZ VS_INICIO            ; espera comecar o proximo
+
+    POP DX
+    POP AX
+    RET
+ESPERA_VSYNC ENDP
 
 END MAIN
