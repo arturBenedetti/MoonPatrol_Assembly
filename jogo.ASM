@@ -11,6 +11,11 @@
 
 .DATA
 
+TEMPO_INICIAL  EQU 60       ; segundos de jogo
+COL_TEMPO      EQU 33       ; coluna de texto do contador (x = 33*8 = 264)
+tempoRestante  DW 60
+ultimoTick     DW 0
+
 jipeX   DW 0          ; posicao X do jipe
 jipeY   DW 160        ; posicao Y do jipe
 VELOCIDADE EQU 3      ; pixels por movimento
@@ -60,6 +65,7 @@ sairTxt   DB 'SAIR', '$'
 ;msgJogo   DB 'INICIANDO MOON PATROL...', '$'
 ;msgVolta  DB 'Pressione qualquer tecla para voltar.', '$'
 msgSair   DB 'Obrigado por jogar!', '$'
+msgGameOver    DB 'GAME OVER', '$'
 
 relogio_map DB 0, 0, 0Eh, 0Eh, 0Eh, 0, 0
             DB 0, 0Eh, 0Eh, 00h, 0Eh, 0Eh, 0
@@ -354,6 +360,12 @@ ABRIR_JOGO:
     MOV deslocTopo, 0
     CALL DESENHAR_JIPE
     
+    MOV tempoRestante, TEMPO_INICIAL
+    MOV AH, 00h                ; le o contador de ticks da BIOS
+    INT 1Ah
+    MOV ultimoTick, DX
+    CALL DESENHAR_TEMPO
+    
     MOV pedidoTiro, 0
     MOV tiroSupAtivo, 0
     MOV tiroFrAtivo, 0
@@ -480,8 +492,43 @@ PRECISA_REDESENHAR:
     CALL DESENHAR_JIPE         ; desenha na nova
 
 FIM_QUADRO:
-    CALL ATUALIZAR_TIROS       ; tiros sempre depois do jipe
+    CALL ATUALIZAR_TIROS
+    CALL ATUALIZAR_TEMPO
+    CMP tempoRestante, 0
+    JNE CONTINUA_JOGO
+    JMP GAME_OVER              ; JMP alcanca qualquer distancia
+CONTINUA_JOGO:
     JMP LOOP_JOGO
+    
+GAME_OVER:
+    ; fundo preto atras do texto
+    MOV CX, 112
+    MOV DX, 92
+    MOV BX, 96
+    MOV SI, 16
+    XOR AL, AL
+    CALL PREENCHER_RETANGULO
+
+    ; texto vermelho centralizado (coluna 15, linha 12)
+    MOV BL, 0Ch
+    MOV DH, 12
+    MOV DL, 15
+    MOV SI, OFFSET msgGameOver
+    CALL IMPRIMIR_TEXTO_COR
+
+    ; descarta teclas apertadas durante o jogo
+GO_LIMPA_TECLADO:
+    MOV AH, 01h
+    INT 16h
+    JZ GO_ESPERA
+    XOR AH, AH
+    INT 16h
+    JMP GO_LIMPA_TECLADO
+
+GO_ESPERA:
+    XOR AH, AH                 ; espera uma tecla
+    INT 16h
+    JMP MENU_PRINCIPAL
 
 ; ============================================================
 ; Encerramento
@@ -1357,5 +1404,77 @@ MTF_FIM:
     POP AX
     RET
 MOVER_TIRO_FRENTE ENDP
+
+; ============================================================
+; Rotina: ATUALIZAR_TEMPO
+; A cada 18 ticks da BIOS (~1 s) diminui tempoRestante
+; ============================================================
+ATUALIZAR_TEMPO PROC NEAR
+    PUSH AX
+    PUSH CX
+    PUSH DX
+
+    MOV AH, 00h
+    INT 1Ah                    ; CX:DX = ticks
+    MOV AX, DX
+    SUB AX, ultimoTick
+    CMP AX, 18
+    JB ATE_FIM                 ; ainda nao passou 1 segundo
+
+    ADD ultimoTick, 18
+    CMP tempoRestante, 0
+    JE ATE_FIM
+    DEC tempoRestante
+    CALL DESENHAR_TEMPO
+
+ATE_FIM:
+    POP DX
+    POP CX
+    POP AX
+    RET
+ATUALIZAR_TEMPO ENDP
+
+; ============================================================
+; Rotina: DESENHAR_TEMPO
+; Escreve tempoRestante (2 digitos, vermelho) ao lado do relogio
+; ============================================================
+DESENHAR_TEMPO PROC NEAR
+    PUSH AX
+    PUSH BX
+    PUSH CX
+    PUSH DX
+    PUSH SI
+
+    ; apaga os 2 digitos anteriores (16x8 px a partir de x=264)
+    MOV CX, COL_TEMPO * 8
+    XOR DX, DX
+    MOV BX, 16
+    MOV SI, 8
+    XOR AL, AL
+    CALL PREENCHER_RETANGULO
+
+    MOV AX, tempoRestante
+    MOV CL, 10
+    DIV CL                     ; AL = dezenas, AH = unidades
+    MOV CH, AH                 ; guarda as unidades
+
+    ADD AL, '0'
+    MOV BL, 0Ch                ; vermelho
+    MOV DH, 0
+    MOV DL, COL_TEMPO
+    CALL DESENHAR_CARACTERE_COR
+
+    MOV AL, CH
+    ADD AL, '0'
+    MOV DL, COL_TEMPO + 1
+    CALL DESENHAR_CARACTERE_COR
+
+    POP SI
+    POP DX
+    POP CX
+    POP BX
+    POP AX
+    RET
+DESENHAR_TEMPO ENDP
 
 END MAIN
