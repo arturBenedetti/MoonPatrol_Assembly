@@ -26,8 +26,8 @@ titulo11 DB '|_|   \__,_|\__|_|  \___/|_|', '$'
 
 jogarTxt  DB 'JOGAR', '$'
 sairTxt   DB 'SAIR', '$'
-msgJogo   DB 'INICIANDO MOON PATROL...', '$'
-msgVolta  DB 'Pressione qualquer tecla para voltar.', '$'
+;msgJogo   DB 'INICIANDO MOON PATROL...', '$'
+;msgVolta  DB 'Pressione qualquer tecla para voltar.', '$'
 msgSair   DB 'Obrigado por jogar!', '$'
 
 relogio_map DB 0, 0, 0Eh, 0Eh, 0Eh, 0, 0
@@ -262,9 +262,12 @@ CICLO_MENU:
 
     ; ESC (ASCII 27)
     CMP AL, 27
-    JE ENCERRAR
+    JE IR_ENCERRAR
 
     JMP CICLO_MENU
+
+IR_ENCERRAR:
+    JMP ENCERRAR
 
 TECLA_CIMA:
     MOV selecao, 0
@@ -297,7 +300,7 @@ ABRIR_JOGO:
     MOV AX, 0013h
     INT 10h
 
-    ; Desenha 3 cora??es de vida
+    ; Desenha 3 coracoes de vida
     MOV CX, 0          ; Posicao X
     MOV DX, 0          ; Posicao Y
     MOV BX, 18         ; Largura
@@ -312,20 +315,14 @@ ABRIR_JOGO:
     MOV SI, 8         ; Altura
     MOV DI, OFFSET relogio_map
     CALL DESENHAR_SPRITE
-
-    MOV DH, 10
-    MOV DL, 8
-    CALL POSICIONAR_CURSOR
-    MOV DX, OFFSET msgJogo
-    MOV AH, 09h
-    INT 21h
-
-    MOV DH, 12
-    MOV DL, 2
-    CALL POSICIONAR_CURSOR
-    MOV DX, OFFSET msgVolta
-    MOV AH, 09h
-    INT 21h
+    
+    ; Desenha a Nave 1 (centralizada verticalmente, na esquerda)
+    MOV CX, 0          ; Posicao X (bem na esquerda)
+    MOV DX, 93         ; Posicao Y (centro vertical: (200-14)/2)
+    MOV BX, 14         ; Largura
+    MOV SI, 14         ; Altura
+    MOV DI, OFFSET nave1_map
+    CALL DESENHAR_SPRITE
 
     ; Aguarda uma tecla para retornar
     XOR AH, AH
