@@ -15,6 +15,7 @@ jipeX   DW 0          ; posicao X do jipe
 jipeY   DW 160        ; posicao Y do jipe
 VELOCIDADE EQU 3      ; pixels por movimento
 LIMITE_X   EQU 140    ; metade da tela (160) - largura do jipe (20)
+
 CHAO         EQU 160   ; Y do jipe no chao
 ALTURA_PULO  EQU 15    ; altura maxima do pulo (px)
 VEL_PULO     EQU 3     ; px por quadro na subida e na descida
@@ -23,6 +24,23 @@ estadoPulo   DB 0      ; 0 = chao, 1 = subindo, 2 = topo, 3 = descendo
 deslocTopo   DW 0      ; px andados na horizontal enquanto esta no topo
 oldX         DW 0      ; posicao anterior (para apagar)
 oldY         DW 0
+
+LIMITE_SUP       EQU 15    ; linha limite do tiro superior
+TIRO_SUP_ALT     EQU 4     ; tiro superior: 2 px de largura x 4 de altura
+VEL_TIRO_SUP     EQU 4     ; px por quadro
+VEL_TIRO_FRENTE  EQU 4     ; px por quadro
+ALCANCE_FRENTE   EQU 50    ; distancia maxima do tiro frontal (px)
+COR_TIRO_SUP     EQU 0Eh   ; amarelo
+COR_TIRO_FRENTE  EQU 0Ch   ; vermelho
+
+pedidoTiro   DB 0          ; 1 = espaco foi apertado neste quadro
+tiroSupAtivo DB 0
+tiroSupX     DW 0
+tiroSupY     DW 0          ; linha do topo do tiro
+tiroFrAtivo  DB 0
+tiroFrX      DW 0
+tiroFrY      DW 0
+tiroFrDist   DW 0          ; px ja percorridos
 
 ; Titulos sem espacos desnecessarios nas pontas (Carregamento ultra-rapido)
 titulo1  DB '__  __', '$'
@@ -335,6 +353,10 @@ ABRIR_JOGO:
     MOV estadoPulo, 0
     MOV deslocTopo, 0
     CALL DESENHAR_JIPE
+    
+    MOV pedidoTiro, 0
+    MOV tiroSupAtivo, 0
+    MOV tiroFrAtivo, 0
 
 LOOP_JOGO:
 
@@ -358,8 +380,14 @@ LER_TECLAS:
     CMP AL, 27                 ; ESC volta ao menu
     JNE NAO_ESC
     JMP MENU_PRINCIPAL
+    
 NAO_ESC:
-
+    CMP AL, 20h                ; barra de espaco
+    JNE NAO_ESPACO
+    MOV pedidoTiro, 1
+    JMP LER_TECLAS
+    
+NAO_ESPACO:
     CMP AH, 4Bh                ; seta esquerda
     JE TECLA_ESQ
     CMP AH, 4Dh                ; seta direita
@@ -441,8 +469,7 @@ REDESENHAR:
     JNE PRECISA_REDESENHAR
     MOV AX, jipeY
     CMP AX, oldY
-    JNE PRECISA_REDESENHAR
-    JMP LOOP_JOGO
+    JE  FIM_QUADRO
 
 PRECISA_REDESENHAR:
     MOV CX, oldX               ; apaga na posicao antiga
@@ -451,6 +478,9 @@ PRECISA_REDESENHAR:
     MOV SI, 10
     CALL APAGAR_RETANGULO
     CALL DESENHAR_JIPE         ; desenha na nova
+
+FIM_QUADRO:
+    CALL ATUALIZAR_TIROS       ; tiros sempre depois do jipe
     JMP LOOP_JOGO
 
 ; ============================================================
@@ -1063,5 +1093,269 @@ VS_INICIO:
     POP AX
     RET
 ESPERA_VSYNC ENDP
+
+; ============================================================
+; Rotina: LER_PIXEL
+; Entrada: CX = X, DX = Y     Saida: AL = cor do pixel
+; ============================================================
+LER_PIXEL PROC NEAR
+    PUSH BX
+    PUSH DX
+    PUSH ES
+    PUSH DI
+
+    MOV AX, 0A000h
+    MOV ES, AX
+    MOV AX, DX
+    MOV BX, 320
+    MUL BX
+    MOV DI, AX
+    ADD DI, CX
+    MOV AL, ES:[DI]
+
+    POP DI
+    POP ES
+    POP DX
+    POP BX
+    RET
+LER_PIXEL ENDP
+
+; ============================================================
+; Rotina: EH_ROCHA   (CX = X, DX = Y)  ->  AL = 1 se for rocha (cor 6 ou 2)
+; ============================================================
+EH_ROCHA PROC NEAR
+    CALL LER_PIXEL
+    CMP AL, 6
+    JE ER_SIM
+    CMP AL, 2
+    JE ER_SIM
+    XOR AL, AL
+    RET
+ER_SIM:
+    MOV AL, 1
+    RET
+EH_ROCHA ENDP
+
+; ============================================================
+; Rotina: EH_NAVE   (CX = X, DX = Y)  ->  AL = 1 se for nave (cor 0Bh, 0Ch ou 0Eh)
+; ============================================================
+EH_NAVE PROC NEAR
+    CALL LER_PIXEL
+    CMP AL, 0Bh
+    JE EN_SIM
+    CMP AL, 0Ch
+    JE EN_SIM
+    CMP AL, 0Eh
+    JE EN_SIM
+    XOR AL, AL
+    RET
+EN_SIM:
+    MOV AL, 1
+    RET
+EH_NAVE ENDP
+
+; ============================================================
+; Rotina: PREENCHER_RETANGULO
+; Entrada: CX = X, DX = Y, BX = Largura, SI = Altura, AL = Cor
+; ============================================================
+PREENCHER_RETANGULO PROC NEAR
+    PUSH AX
+    PUSH BX
+    PUSH CX
+    PUSH DX
+    PUSH SI
+
+PRE_LINHA:
+    PUSH CX
+    PUSH BX
+PRE_COLUNA:
+    CALL PLOT_PIXEL
+    INC CX
+    DEC BX
+    JNZ PRE_COLUNA
+    POP BX
+    POP CX
+    INC DX
+    DEC SI
+    JNZ PRE_LINHA
+
+    POP SI
+    POP DX
+    POP CX
+    POP BX
+    POP AX
+    RET
+PREENCHER_RETANGULO ENDP
+
+; ============================================================
+; Rotina: ATUALIZAR_TIROS
+; Cria os tiros (se espaco foi apertado) e move os ativos
+; ============================================================
+ATUALIZAR_TIROS PROC NEAR
+    PUSH AX
+
+    CMP pedidoTiro, 0
+    JE AT_MOVER
+    MOV pedidoTiro, 0
+
+    ; ---- canhao superior (sai do meio do jipe, por cima) ----
+    CMP tiroSupAtivo, 0
+    JNE AT_NOVO_FRENTE
+    MOV AX, jipeX
+    ADD AX, 9
+    MOV tiroSupX, AX
+    MOV AX, jipeY
+    SUB AX, TIRO_SUP_ALT
+    MOV tiroSupY, AX
+    MOV tiroSupAtivo, 1
+
+    ; ---- canhao frontal (sai da frente do jipe) ----
+AT_NOVO_FRENTE:
+    CMP tiroFrAtivo, 0
+    JNE AT_MOVER
+    MOV AX, jipeX
+    ADD AX, 20
+    MOV tiroFrX, AX
+    MOV AX, jipeY
+    ADD AX, 3
+    MOV tiroFrY, AX
+    MOV tiroFrDist, 0
+    MOV tiroFrAtivo, 1
+
+AT_MOVER:
+    CMP tiroSupAtivo, 0
+    JE AT_FRENTE
+    CALL MOVER_TIRO_SUP
+AT_FRENTE:
+    CMP tiroFrAtivo, 0
+    JE AT_FIM
+    CALL MOVER_TIRO_FRENTE
+AT_FIM:
+    POP AX
+    RET
+ATUALIZAR_TIROS ENDP
+
+; ============================================================
+; Rotina: MOVER_TIRO_SUP
+; Sobe ate acertar uma nave ou chegar na linha LIMITE_SUP
+; ============================================================
+MOVER_TIRO_SUP PROC NEAR
+    PUSH AX
+    PUSH BX
+    PUSH CX
+    PUSH DX
+    PUSH SI
+
+    ; apaga na posicao atual
+    MOV CX, tiroSupX
+    MOV DX, tiroSupY
+    MOV BX, 2
+    MOV SI, TIRO_SUP_ALT
+    XOR AL, AL
+    CALL PREENCHER_RETANGULO
+
+    MOV BX, VEL_TIRO_SUP        ; passos restantes neste quadro
+MTS_PASSO:
+    CMP tiroSupY, LIMITE_SUP
+    JBE MTS_DESATIVA            ; chegou na linha 15
+
+    MOV CX, tiroSupX            ; olha a linha logo acima (2 pixels)
+    MOV DX, tiroSupY
+    DEC DX
+    CALL EH_NAVE
+    CMP AL, 1
+    JE MTS_ACERTOU
+    INC CX
+    CALL EH_NAVE
+    CMP AL, 1
+    JE MTS_ACERTOU
+
+    DEC tiroSupY
+    DEC BX
+    JNZ MTS_PASSO
+
+    ; ainda esta voando: desenha na nova posicao
+    MOV CX, tiroSupX
+    MOV DX, tiroSupY
+    MOV BX, 2
+    MOV SI, TIRO_SUP_ALT
+    MOV AL, COR_TIRO_SUP
+    CALL PREENCHER_RETANGULO
+    JMP MTS_FIM
+
+MTS_ACERTOU:
+    ; AQUI entra a destruicao da nave atingida (pixel em CX, DX)
+MTS_DESATIVA:
+    MOV tiroSupAtivo, 0
+MTS_FIM:
+    POP SI
+    POP DX
+    POP CX
+    POP BX
+    POP AX
+    RET
+MOVER_TIRO_SUP ENDP
+
+; ============================================================
+; Rotina: MOVER_TIRO_FRENTE
+; Anda para a direita ate 50 px ou ate bater em uma rocha
+; ============================================================
+MOVER_TIRO_FRENTE PROC NEAR
+    PUSH AX
+    PUSH BX
+    PUSH CX
+    PUSH DX
+    PUSH SI
+
+    ; apaga na posicao atual (4x2)
+    MOV CX, tiroFrX
+    MOV DX, tiroFrY
+    MOV BX, 4
+    MOV SI, 2
+    XOR AL, AL
+    CALL PREENCHER_RETANGULO
+
+    MOV BX, VEL_TIRO_FRENTE
+MTF_PASSO:
+    CMP tiroFrDist, ALCANCE_FRENTE
+    JAE MTF_DESATIVA            ; percorreu 50 px
+
+    MOV CX, tiroFrX             ; olha a coluna logo a frente (2 pixels)
+    ADD CX, 4
+    MOV DX, tiroFrY
+    CALL EH_ROCHA
+    CMP AL, 1
+    JE MTF_ACERTOU
+    INC DX
+    CALL EH_ROCHA
+    CMP AL, 1
+    JE MTF_ACERTOU
+
+    INC tiroFrX
+    INC tiroFrDist
+    DEC BX
+    JNZ MTF_PASSO
+
+    ; ainda esta voando: desenha
+    MOV CX, tiroFrX
+    MOV DX, tiroFrY
+    MOV BX, 4
+    MOV SI, 2
+    MOV AL, COR_TIRO_FRENTE
+    CALL PREENCHER_RETANGULO
+    JMP MTF_FIM
+
+MTF_ACERTOU:
+    ; AQUI entra a destruicao da rocha atingida
+MTF_DESATIVA:
+    MOV tiroFrAtivo, 0
+MTF_FIM:
+    POP SI
+    POP DX
+    POP CX
+    POP BX
+    POP AX
+    RET
+MOVER_TIRO_FRENTE ENDP
 
 END MAIN
