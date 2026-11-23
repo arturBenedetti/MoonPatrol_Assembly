@@ -11,11 +11,18 @@
 
 .DATA
 
-jipeX   DW 0          ; posicao X atual do jipe
-jipeY   DW 95         ; centro vertical: (200-10)/2
-
+jipeX   DW 0          ; posicao X do jipe
+jipeY   DW 160        ; posicao Y do jipe
 VELOCIDADE EQU 3      ; pixels por movimento
 LIMITE_X   EQU 140    ; metade da tela (160) - largura do jipe (20)
+CHAO         EQU 160   ; Y do jipe no chao
+ALTURA_PULO  EQU 15    ; altura maxima do pulo (px)
+VEL_PULO     EQU 3     ; px por quadro na subida e na descida
+DESLOC_TOPO  EQU 5     ; px horizontais que ele "fica" no topo
+estadoPulo   DB 0      ; 0 = chao, 1 = subindo, 2 = topo, 3 = descendo
+deslocTopo   DW 0      ; px andados na horizontal enquanto esta no topo
+oldX         DW 0      ; posicao anterior (para apagar)
+oldY         DW 0
 
 ; Titulos sem espacos desnecessarios nas pontas (Carregamento ultra-rapido)
 titulo1  DB '__  __', '$'
@@ -322,66 +329,129 @@ ABRIR_JOGO:
     MOV DI, OFFSET relogio_map
     CALL DESENHAR_SPRITE
 
-    ; Posicao inicial do jipe
+    ; Estado inicial
     MOV jipeX, 0
+    MOV jipeY, CHAO
+    MOV estadoPulo, 0
+    MOV deslocTopo, 0
     CALL DESENHAR_JIPE
 
 LOOP_JOGO:
 
-    CALL ESPERA_VSYNC          ; sincroniza com a tela (reduz flicker)
+    CALL ESPERA_VSYNC
 
-    MOV AH, 01h                ; ha tecla no buffer?
+    ; Guarda posicao anterior
+    MOV AX, jipeX
+    MOV oldX, AX
+    MOV AX, jipeY
+    MOV oldY, AX
+
+; ---------- Leitura das teclas (esvazia o buffer) ----------
+LER_TECLAS:
+    MOV AH, 01h
     INT 16h
-    JZ LOOP_JOGO
+    JZ FIM_TECLAS
 
-    XOR AH, AH                 ; le a tecla (AH = scan code, AL = ASCII)
+    XOR AH, AH
     INT 16h
 
     CMP AL, 27                 ; ESC volta ao menu
-    JE VOLTAR_MENU
+    JNE NAO_ESC
+    JMP MENU_PRINCIPAL
+NAO_ESC:
 
     CMP AH, 4Bh                ; seta esquerda
-    JE MOVER_ESQ
-
+    JE TECLA_ESQ
     CMP AH, 4Dh                ; seta direita
-    JE MOVER_DIR
+    JE TECLA_DIR
+    CMP AH, 48h                ; seta cima
+    JE TECLA_PULO
+    JMP LER_TECLAS
 
-    JMP LOOP_JOGO
-
-MOVER_ESQ:
-    CALL APAGAR_JIPE
+TECLA_ESQ:
     MOV AX, jipeX
+    MOV BX, AX                 ; BX = X antigo
     SUB AX, VELOCIDADE
-    JNC ESQ_OK                 ; se nao deu "borrow", continua
-    XOR AX, AX                 ; senao trava em 0
+    JNC ESQ_OK
+    XOR AX, AX                 ; trava em 0
 ESQ_OK:
     MOV jipeX, AX
-    JMP ATUALIZAR_JIPE
+    CMP estadoPulo, 2          ; no topo? acumula deslocamento
+    JNE LER_TECLAS
+    SUB BX, AX                 ; px realmente andados
+    ADD deslocTopo, BX
+    JMP LER_TECLAS
 
-MOVER_DIR:
-    CALL APAGAR_JIPE
+TECLA_DIR:
     MOV AX, jipeX
+    MOV BX, AX                 ; BX = X antigo
     ADD AX, VELOCIDADE
     CMP AX, LIMITE_X
     JBE DIR_OK
-    MOV AX, LIMITE_X           ; trava na metade esquerda da tela
+    MOV AX, LIMITE_X           ; trava na metade esquerda
 DIR_OK:
     MOV jipeX, AX
+    CMP estadoPulo, 2
+    JNE LER_TECLAS
+    SUB AX, BX                 ; px realmente andados
+    ADD deslocTopo, AX
+    JMP LER_TECLAS
 
-ATUALIZAR_JIPE:
-    CALL DESENHAR_JIPE
+TECLA_PULO:
+    CMP estadoPulo, 0          ; so pula se estiver no chao
+    JNE LER_TECLAS
+    MOV estadoPulo, 1
+    JMP LER_TECLAS
 
-    ; Esvazia o buffer do teclado (evita o jipe "continuar andando" depois de soltar)
-DRENAR_TECLADO:
-    MOV AH, 01h
-    INT 16h
-    JZ LOOP_JOGO
-    XOR AH, AH
-    INT 16h
-    JMP DRENAR_TECLADO
+; ---------- Atualiza o pulo (1 passo por quadro) ----------
+FIM_TECLAS:
+    CMP estadoPulo, 1
+    JE PULO_SUBINDO
+    CMP estadoPulo, 2
+    JE PULO_TOPO
+    CMP estadoPulo, 3
+    JE PULO_DESCENDO
+    JMP REDESENHAR
 
-VOLTAR_MENU:
-    JMP MENU_PRINCIPAL
+PULO_SUBINDO:
+    SUB jipeY, VEL_PULO
+    CMP jipeY, CHAO - ALTURA_PULO
+    JA REDESENHAR              ; ainda nao chegou ao topo
+    MOV jipeY, CHAO - ALTURA_PULO
+    MOV estadoPulo, 2
+    MOV deslocTopo, 0
+    JMP REDESENHAR
+
+PULO_TOPO:
+    CMP deslocTopo, DESLOC_TOPO
+    JB REDESENHAR              ; ainda nao andou o suficiente
+    MOV estadoPulo, 3          ; comeca a descer ja neste quadro
+
+PULO_DESCENDO:
+    ADD jipeY, VEL_PULO
+    CMP jipeY, CHAO
+    JB REDESENHAR
+    MOV jipeY, CHAO            ; pousou
+    MOV estadoPulo, 0
+
+; ---------- Redesenha so se mudou ----------
+REDESENHAR:
+    MOV AX, jipeX
+    CMP AX, oldX
+    JNE PRECISA_REDESENHAR
+    MOV AX, jipeY
+    CMP AX, oldY
+    JNE PRECISA_REDESENHAR
+    JMP LOOP_JOGO
+
+PRECISA_REDESENHAR:
+    MOV CX, oldX               ; apaga na posicao antiga
+    MOV DX, oldY
+    MOV BX, 20
+    MOV SI, 10
+    CALL APAGAR_RETANGULO
+    CALL DESENHAR_JIPE         ; desenha na nova
+    JMP LOOP_JOGO
 
 ; ============================================================
 ; Encerramento
