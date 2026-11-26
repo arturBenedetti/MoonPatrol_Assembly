@@ -77,6 +77,10 @@ bombaY      DW 0, 0, 0
 naveTimer   DW 0, 0, 0   ; quadros ate o proximo disparo
 vidas       DB 3
 
+COL_PONTOS     EQU 17       ; coluna de texto (x = 17*8 = 136)
+PONTOS_NAVE    EQU 100
+pontos         DW 0
+
 ; Titulos sem espacos desnecessarios nas pontas (Carregamento ultra-rapido)
 titulo1  DB '__  __', '$'
 titulo2  DB '|  \/  |', '$'
@@ -404,6 +408,8 @@ ABRIR_JOGO:
     MOV bombaAtiva + 2, 0
     MOV bombaAtiva + 4, 0
     MOV vidas, 3
+    MOV pontos, 0
+    CALL DESENHAR_PONTOS
     CALL DESENHAR_TEMPO
     
     MOV pedidoTiro, 0
@@ -1739,6 +1745,8 @@ DNE_LOOP:
     MOV apagarFlag, 1          ; acertou esta nave
     CALL DESENHAR_NAVE_IDX
     MOV naveAtiva[BX], 0
+    ADD pontos, PONTOS_NAVE
+    CALL DESENHAR_PONTOS
     JMP DNE_FIM
 
 DNE_PROX:
@@ -1948,5 +1956,54 @@ AB_FIM:
     POP AX
     RET
 ATUALIZAR_BOMBAS ENDP
+
+; ============================================================
+; Rotina: DESENHAR_PONTOS
+; Escreve "pontos" com 5 digitos, em branco, no topo e centralizado
+; ============================================================
+DESENHAR_PONTOS PROC NEAR
+    PUSH AX
+    PUSH BX
+    PUSH CX
+    PUSH DX
+    PUSH SI
+
+    ; apaga os 5 digitos anteriores (40x8 px)
+    MOV CX, COL_PONTOS * 8
+    XOR DX, DX
+    MOV BX, 40
+    MOV SI, 8
+    XOR AL, AL
+    CALL PREENCHER_RETANGULO
+
+    ; separa os digitos (o ultimo sai primeiro, por isso usa a pilha)
+    MOV AX, pontos
+    MOV BX, 10
+    MOV CX, 5
+DP_DIV:
+    XOR DX, DX
+    DIV BX                     ; DX = digito
+    PUSH DX
+    LOOP DP_DIV
+
+    ; imprime do mais significativo ao menos
+    MOV DH, 0                  ; linha 0
+    MOV DL, COL_PONTOS
+    MOV CX, 5
+DP_PRINT:
+    POP AX
+    ADD AL, '0'
+    MOV BL, 0Fh                ; branco
+    CALL DESENHAR_CARACTERE_COR
+    INC DL
+    LOOP DP_PRINT
+
+    POP SI
+    POP DX
+    POP CX
+    POP BX
+    POP AX
+    RET
+DESENHAR_PONTOS ENDP
 
 END MAIN
