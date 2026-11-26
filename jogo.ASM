@@ -47,6 +47,24 @@ tiroFrX      DW 0
 tiroFrY      DW 0
 tiroFrDist   DW 0          ; px ja percorridos
 
+MAX_NAVES   EQU 3
+NAVE_W      EQU 14
+NAVE_H      EQU 14
+NAVE_Y_MIN  EQU 15      ; linha minima de aparecimento
+NAVE_Y_MAX  EQU 100     ; linha maxima de aparecimento
+NAVE_DIST   EQU 30      ; distancia minima entre naves do grupo
+VEL_NAVE    EQU 1       ; px por quadro (para a esquerda)
+
+naveAtiva   DW 0, 0, 0
+naveX       DW 0, 0, 0
+naveY       DW 0, 0, 0
+tipoGrupo   DW 0        ; 0, 2 ou 4 (indice na tabela, em bytes)
+qtdGrupo    DW 0
+yMinProx    DW 0
+navesVivas  DW 0
+apagarFlag  DB 0        ; 1 = desenhar_nave apaga em vez de desenhar
+semente     DW 1234h
+
 ; Titulos sem espacos desnecessarios nas pontas (Carregamento ultra-rapido)
 titulo1  DB '__  __', '$'
 titulo2  DB '|  \/  |', '$'
@@ -211,6 +229,8 @@ rocha4_map DB 7, 7, 7, 7, 7, 6, 6, 2, 7, 7, 7, 7
            DB 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 2
            DB 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 2
            DB 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 2
+           
+tabNaves    DW OFFSET nave1_map, OFFSET nave2_map, OFFSET nave3_map
 
 selecao DB 0
 animX   DW 10    ; Posicao X em pixels (0..319)
@@ -364,6 +384,10 @@ ABRIR_JOGO:
     MOV AH, 00h                ; le o contador de ticks da BIOS
     INT 1Ah
     MOV ultimoTick, DX
+    MOV semente, DX            ; semente aleatoria vinda do relogio
+    MOV naveAtiva, 0           ; nenhuma nave ativa
+    MOV naveAtiva + 2, 0
+    MOV naveAtiva + 4, 0
     CALL DESENHAR_TEMPO
     
     MOV pedidoTiro, 0
@@ -493,10 +517,11 @@ PRECISA_REDESENHAR:
 
 FIM_QUADRO:
     CALL ATUALIZAR_TIROS
+    CALL ATUALIZAR_NAVES       ; naves depois dos tiros
     CALL ATUALIZAR_TEMPO
     CMP tempoRestante, 0
     JNE CONTINUA_JOGO
-    JMP GAME_OVER              ; JMP alcanca qualquer distancia
+    JMP GAME_OVER
 CONTINUA_JOGO:
     JMP LOOP_JOGO
     
@@ -1331,7 +1356,7 @@ MTS_PASSO:
     JMP MTS_FIM
 
 MTS_ACERTOU:
-    ; AQUI entra a destruicao da nave atingida (pixel em CX, DX)
+    CALL DESTRUIR_NAVE_EM      ; apaga a nave que contem o pixel (CX, DX)
 MTS_DESATIVA:
     MOV tiroSupAtivo, 0
 MTS_FIM:
@@ -1476,5 +1501,229 @@ DESENHAR_TEMPO PROC NEAR
     POP AX
     RET
 DESENHAR_TEMPO ENDP
+
+; ============================================================
+; Rotina: RANDOM
+; Entrada: CX = limite (1..255)     Saida: AX = 0..CX-1
+; ============================================================
+RANDOM PROC NEAR
+    PUSH BX
+    PUSH DX
+
+    MOV AX, semente
+    MOV BX, 25173
+    MUL BX
+    ADD AX, 13849
+    MOV semente, AX
+
+    MOV AL, AH                 ; usa o byte alto (mais aleatorio)
+    XOR AH, AH
+    XOR DX, DX
+    DIV CX
+    MOV AX, DX
+
+    POP DX
+    POP BX
+    RET
+RANDOM ENDP
+
+; ============================================================
+; Rotina: DESENHAR_NAVE_IDX
+; Entrada: BX = indice da nave (0, 2, 4)
+; Desenha (apagarFlag = 0) ou apaga (apagarFlag = 1) a nave,
+; com recorte nas bordas esquerda e direita da tela
+; ============================================================
+DESENHAR_NAVE_IDX PROC NEAR
+    PUSH AX
+    PUSH BX
+    PUSH CX
+    PUSH DX
+    PUSH SI
+    PUSH DI
+
+    MOV CX, naveX[BX]
+    MOV DX, naveY[BX]
+    MOV SI, tipoGrupo
+    MOV DI, tabNaves[SI]
+    MOV SI, NAVE_H
+
+DN_LINHA:
+    PUSH CX
+    MOV BX, NAVE_W
+DN_COLUNA:
+    MOV AL, [DI]
+    CMP AL, 7                  ; transparente
+    JE DN_PULA
+    CMP CX, 320                ; fora da tela (negativo ou >= 320)
+    JAE DN_PULA
+    CMP apagarFlag, 0
+    JE DN_PLOT
+    XOR AL, AL                 ; apagando: pinta de preto
+DN_PLOT:
+    CALL PLOT_PIXEL
+DN_PULA:
+    INC CX
+    INC DI
+    DEC BX
+    JNZ DN_COLUNA
+    POP CX
+    INC DX
+    DEC SI
+    JNZ DN_LINHA
+
+    POP DI
+    POP SI
+    POP DX
+    POP CX
+    POP BX
+    POP AX
+    RET
+DESENHAR_NAVE_IDX ENDP
+
+; ============================================================
+; Rotina: GERAR_GRUPO
+; Cria 1 a 3 naves do mesmo tipo, com Y aleatorio entre
+; NAVE_Y_MIN e NAVE_Y_MAX e distancia minima NAVE_DIST
+; ============================================================
+GERAR_GRUPO PROC NEAR
+    PUSH AX
+    PUSH BX
+    PUSH CX
+    PUSH DX
+    PUSH SI
+
+    MOV CX, 3                  ; tipo aleatorio (0..2)
+    CALL RANDOM
+    SHL AX, 1
+    MOV tipoGrupo, AX
+
+    MOV CX, 3                  ; quantidade aleatoria (1..3)
+    CALL RANDOM
+    INC AX
+    MOV qtdGrupo, AX
+
+    MOV yMinProx, NAVE_Y_MIN
+    XOR SI, SI                 ; i = 0
+    XOR BX, BX                 ; indice em bytes
+
+GG_LOOP:
+    ; max_y = NAVE_Y_MAX - NAVE_DIST * (naves que ainda faltam depois desta)
+    MOV AX, qtdGrupo
+    DEC AX
+    SUB AX, SI
+    MOV CX, NAVE_DIST
+    MUL CX
+    MOV CX, NAVE_Y_MAX
+    SUB CX, AX
+    SUB CX, yMinProx
+    INC CX                     ; CX = quantidade de valores possiveis
+    CALL RANDOM
+    ADD AX, yMinProx
+
+    MOV naveY[BX], AX
+    MOV naveX[BX], 320         ; entra pela direita
+    MOV naveAtiva[BX], 1
+
+    ADD AX, NAVE_DIST          ; a proxima precisa estar pelo menos 30 px abaixo
+    MOV yMinProx, AX
+
+    ADD BX, 2
+    INC SI
+    CMP SI, qtdGrupo
+    JB GG_LOOP
+
+    POP SI
+    POP DX
+    POP CX
+    POP BX
+    POP AX
+    RET
+GERAR_GRUPO ENDP
+
+; ============================================================
+; Rotina: ATUALIZAR_NAVES
+; Move as naves ativas e gera novo grupo quando nao sobrar nenhuma
+; ============================================================
+ATUALIZAR_NAVES PROC NEAR
+    PUSH BX
+
+    MOV navesVivas, 0
+    XOR BX, BX
+
+AN_LOOP:
+    CMP naveAtiva[BX], 0
+    JE AN_PROX
+
+    MOV apagarFlag, 1          ; apaga na posicao antiga
+    CALL DESENHAR_NAVE_IDX
+
+    SUB naveX[BX], VEL_NAVE
+    CMP naveX[BX], -NAVE_W     ; saiu totalmente pela esquerda?
+    JLE AN_SAIU
+
+    MOV apagarFlag, 0          ; desenha na nova
+    CALL DESENHAR_NAVE_IDX
+    INC navesVivas
+    JMP AN_PROX
+
+AN_SAIU:
+    MOV naveAtiva[BX], 0
+
+AN_PROX:
+    ADD BX, 2
+    CMP BX, MAX_NAVES * 2
+    JB AN_LOOP
+
+    CMP navesVivas, 0
+    JNE AN_FIM
+    CALL GERAR_GRUPO           ; grupo anterior acabou: gera o proximo
+AN_FIM:
+    POP BX
+    RET
+ATUALIZAR_NAVES ENDP
+
+; ============================================================
+; Rotina: DESTRUIR_NAVE_EM
+; Entrada: CX = X, DX = Y de um pixel atingido
+; Apaga e desativa a nave que contem esse pixel
+; ============================================================
+DESTRUIR_NAVE_EM PROC NEAR
+    PUSH AX
+    PUSH BX
+
+    XOR BX, BX
+DNE_LOOP:
+    CMP naveAtiva[BX], 0
+    JE DNE_PROX
+
+    MOV AX, naveX[BX]
+    CMP CX, AX
+    JL DNE_PROX
+    ADD AX, NAVE_W
+    CMP CX, AX
+    JGE DNE_PROX
+
+    MOV AX, naveY[BX]
+    CMP DX, AX
+    JL DNE_PROX
+    ADD AX, NAVE_H
+    CMP DX, AX
+    JGE DNE_PROX
+
+    MOV apagarFlag, 1          ; acertou esta nave
+    CALL DESENHAR_NAVE_IDX
+    MOV naveAtiva[BX], 0
+    JMP DNE_FIM
+
+DNE_PROX:
+    ADD BX, 2
+    CMP BX, MAX_NAVES * 2
+    JB DNE_LOOP
+
+DNE_FIM:
+    POP BX
+    POP AX
+    RET
+DESTRUIR_NAVE_EM ENDP
 
 END MAIN
