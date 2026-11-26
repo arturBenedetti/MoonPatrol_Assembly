@@ -56,6 +56,8 @@ NAVE_DIST   EQU 30      ; distancia minima entre naves do grupo
 VEL_NAVE    EQU 1       ; px por quadro (para a esquerda)
 
 naveAtiva   DW 0, 0, 0
+ESPERA_NAVE EQU 140          ; quadros entre naves do grupo (~2 s a 70 Hz)
+naveEspera  DW 0, 0, 0       ; quadros ate a nave entrar na tela
 naveX       DW 0, 0, 0
 naveY       DW 0, 0, 0
 tipoGrupo   DW 0        ; 0, 2 ou 4 (indice na tabela, em bytes)
@@ -403,6 +405,9 @@ ABRIR_JOGO:
     MOV naveAtiva, 0           ; nenhuma nave ativa
     MOV naveAtiva + 2, 0
     MOV naveAtiva + 4, 0
+    MOV naveEspera, 0
+    MOV naveEspera + 2, 0
+    MOV naveEspera + 4, 0
     MOV bombaAtiva, 0
     MOV bombaAtiva + 2, 0
     MOV bombaAtiva + 4, 0
@@ -574,9 +579,6 @@ GAME_OVER:
     CALL IMPRIMIR_TEXTO_COR
 
     CALL DESENHAR_SCORE_FINAL  ; <-- nova linha
-
-    ; descarta teclas apertadas durante o jogo
-GO_LIMPA_TECLADO:
 
     ; descarta teclas apertadas durante o jogo
 GO_LIMPA_TECLADO:
@@ -1628,6 +1630,7 @@ GERAR_GRUPO PROC NEAR
     PUSH CX
     PUSH DX
     PUSH SI
+    PUSH DI
 
     MOV CX, 3                  ; tipo aleatorio (0..2)
     CALL RANDOM
@@ -1659,7 +1662,7 @@ GG_LOOP:
 
     MOV naveY[BX], AX
     MOV naveX[BX], 320         ; entra pela direita
-    MOV naveAtiva[BX], 1
+    MOV naveAtiva[BX], 0       ; ainda nao esta na tela
 
     ADD AX, NAVE_DIST          ; a proxima precisa estar 30 px abaixo
     MOV yMinProx, AX
@@ -1669,11 +1672,38 @@ GG_LOOP:
     ADD AX, 40
     MOV naveTimer[BX], AX
 
+    MOV AX, SI                 ; espera = i * ESPERA_NAVE + 1
+    MOV CX, ESPERA_NAVE
+    MUL CX
+    INC AX
+    MOV naveEspera[BX], AX
+
     ADD BX, 2
     INC SI
     CMP SI, qtdGrupo
     JB GG_LOOP
 
+    ; ---- embaralha os Y (Fisher-Yates), mantendo os 30 px entre eles ----
+    MOV SI, qtdGrupo
+    DEC SI                     ; i = qtd - 1
+GG_SORT:
+    CMP SI, 0
+    JE GG_FIM
+    MOV CX, SI
+    INC CX
+    CALL RANDOM                ; AX = j (0..i)
+    MOV BX, AX
+    SHL BX, 1                  ; BX = j * 2
+    MOV DI, SI
+    SHL DI, 1                  ; DI = i * 2
+    MOV AX, naveY[BX]
+    XCHG AX, naveY[DI]
+    MOV naveY[BX], AX
+    DEC SI
+    JMP GG_SORT
+
+GG_FIM:
+    POP DI
     POP SI
     POP DX
     POP CX
@@ -1693,9 +1723,20 @@ ATUALIZAR_NAVES PROC NEAR
     XOR BX, BX
 
 AN_LOOP:
+    AN_LOOP:
     CMP naveAtiva[BX], 0
-    JE AN_PROX
+    JNE AN_ATIVA
 
+    ; nave ainda esperando para entrar
+    CMP naveEspera[BX], 0
+    JE AN_PROX                 ; nao existe (destruida ou ja saiu)
+    INC navesVivas             ; conta como viva: o proximo grupo espera
+    DEC naveEspera[BX]
+    JNZ AN_PROX
+    MOV naveAtiva[BX], 1       ; chegou a hora: entra pela direita (X = 320)
+    JMP AN_PROX
+
+AN_ATIVA:
     MOV apagarFlag, 1          ; apaga na posicao antiga
     CALL DESENHAR_NAVE_IDX
 
