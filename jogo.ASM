@@ -65,6 +65,18 @@ navesVivas  DW 0
 apagarFlag  DB 0        ; 1 = desenhar_nave apaga em vez de desenhar
 semente     DW 1234h
 
+BOMBA_W     EQU 2
+BOMBA_H     EQU 4
+VEL_BOMBA   EQU 2        ; px por quadro
+SOLO        EQU 170      ; linha do solo (CHAO + altura do jipe)
+COR_BOMBA   EQU 0Fh      ; branco (nao confunde com EH_NAVE nem EH_ROCHA)
+
+bombaAtiva  DW 0, 0, 0   ; uma bomba por nave (mesmo indice)
+bombaX      DW 0, 0, 0
+bombaY      DW 0, 0, 0
+naveTimer   DW 0, 0, 0   ; quadros ate o proximo disparo
+vidas       DB 3
+
 ; Titulos sem espacos desnecessarios nas pontas (Carregamento ultra-rapido)
 titulo1  DB '__  __', '$'
 titulo2  DB '|  \/  |', '$'
@@ -388,6 +400,10 @@ ABRIR_JOGO:
     MOV naveAtiva, 0           ; nenhuma nave ativa
     MOV naveAtiva + 2, 0
     MOV naveAtiva + 4, 0
+    MOV bombaAtiva, 0
+    MOV bombaAtiva + 2, 0
+    MOV bombaAtiva + 4, 0
+    MOV vidas, 3
     CALL DESENHAR_TEMPO
     
     MOV pedidoTiro, 0
@@ -517,8 +533,13 @@ PRECISA_REDESENHAR:
 
 FIM_QUADRO:
     CALL ATUALIZAR_TIROS
-    CALL ATUALIZAR_NAVES       ; naves depois dos tiros
+    CALL ATUALIZAR_NAVES
+    CALL ATUALIZAR_BOMBAS      ; disparos das naves
     CALL ATUALIZAR_TEMPO
+    CMP vidas, 0
+    JNE TEM_VIDA
+    JMP GAME_OVER              ; sem vidas
+TEM_VIDA:
     CMP tempoRestante, 0
     JNE CONTINUA_JOGO
     JMP GAME_OVER
@@ -1607,6 +1628,18 @@ GERAR_GRUPO PROC NEAR
     XOR BX, BX                 ; indice em bytes
 
 GG_LOOP:
+    ADD AX, NAVE_DIST          ; a proxima precisa estar pelo menos 30 px abaixo
+    MOV yMinProx, AX
+
+    MOV CX, 60                 ; primeiro disparo entre 40 e 99 quadros
+    CALL RANDOM
+    ADD AX, 40
+    MOV naveTimer[BX], AX      ; agora BX = indice da nave atual
+
+    ADD BX, 2
+    INC SI
+    CMP SI, qtdGrupo
+    JB GG_LOOP
     ; max_y = NAVE_Y_MAX - NAVE_DIST * (naves que ainda faltam depois desta)
     MOV AX, qtdGrupo
     DEC AX
@@ -1725,5 +1758,202 @@ DNE_FIM:
     POP AX
     RET
 DESTRUIR_NAVE_EM ENDP
+
+; ============================================================
+; Rotina: APAGAR_BOMBA   (CX = X, DX = Y)
+; Apaga so os pixels da cor da bomba, sem estragar jipe ou naves
+; ============================================================
+APAGAR_BOMBA PROC NEAR
+    PUSH AX
+    PUSH BX
+    PUSH CX
+    PUSH DX
+    PUSH SI
+
+    MOV SI, BOMBA_H
+APB_LINHA:
+    PUSH CX
+    MOV BX, BOMBA_W
+APB_COLUNA:
+    CALL LER_PIXEL
+    CMP AL, COR_BOMBA
+    JNE APB_PULA
+    XOR AL, AL
+    CALL PLOT_PIXEL
+APB_PULA:
+    INC CX
+    DEC BX
+    JNZ APB_COLUNA
+    POP CX
+    INC DX
+    DEC SI
+    JNZ APB_LINHA
+
+    POP SI
+    POP DX
+    POP CX
+    POP BX
+    POP AX
+    RET
+APAGAR_BOMBA ENDP
+
+; ============================================================
+; Rotina: PERDER_VIDA
+; Tira uma vida e redesenha os coracoes do HUD
+; ============================================================
+PERDER_VIDA PROC NEAR
+    PUSH AX
+    PUSH BX
+    PUSH CX
+    PUSH DX
+    PUSH SI
+    PUSH DI
+
+    CMP vidas, 0
+    JE PV_FIM
+    DEC vidas
+
+    XOR CX, CX                 ; apaga a area dos coracoes (18x11)
+    XOR DX, DX
+    MOV BX, 18
+    MOV SI, 11
+    CALL APAGAR_RETANGULO
+
+    CMP vidas, 0
+    JE PV_FIM
+    MOV DI, OFFSET vida1_map
+    CMP vidas, 1
+    JE PV_DESENHA
+    MOV DI, OFFSET vida2_map   ; vidas = 2
+PV_DESENHA:
+    XOR CX, CX
+    XOR DX, DX
+    MOV BX, 18
+    MOV SI, 11
+    CALL DESENHAR_SPRITE
+
+PV_FIM:
+    POP DI
+    POP SI
+    POP DX
+    POP CX
+    POP BX
+    POP AX
+    RET
+PERDER_VIDA ENDP
+
+; ============================================================
+; Rotina: ATUALIZAR_BOMBAS
+; Para cada nave: conta o timer e dispara; move as bombas ativas
+; ============================================================
+ATUALIZAR_BOMBAS PROC NEAR
+    PUSH AX
+    PUSH BX
+    PUSH CX
+    PUSH DX
+    PUSH SI
+
+    XOR BX, BX
+
+AB_LOOP:
+    ; ---------- disparo ----------
+    CMP naveAtiva[BX], 0
+    JE AB_MOVER
+    DEC naveTimer[BX]
+    JNZ AB_MOVER
+
+    MOV CX, 60                 ; reinicia o timer (40 a 99 quadros)
+    CALL RANDOM
+    ADD AX, 40
+    MOV naveTimer[BX], AX
+
+    CMP bombaAtiva[BX], 0      ; so uma bomba por nave
+    JNE AB_MOVER
+    CMP naveX[BX], 0           ; so atira se a nave estiver na tela
+    JL AB_MOVER
+    CMP naveX[BX], 300
+    JG AB_MOVER
+
+    MOV AX, naveX[BX]
+    ADD AX, 6                  ; meio da nave
+    MOV bombaX[BX], AX
+    MOV AX, naveY[BX]
+    ADD AX, 10                 ; logo abaixo do sprite visivel
+    MOV bombaY[BX], AX
+    MOV bombaAtiva[BX], 1
+
+    ; ---------- movimento ----------
+AB_MOVER:
+    CMP bombaAtiva[BX], 0
+    JE AB_PROX
+
+    MOV CX, bombaX[BX]         ; apaga na posicao atual
+    MOV DX, bombaY[BX]
+    CALL APAGAR_BOMBA
+
+    MOV SI, VEL_BOMBA
+AB_PASSO:
+    INC bombaY[BX]
+    MOV AX, bombaY[BX]
+    ADD AX, BOMBA_H            ; AX = linha logo abaixo da bomba
+    CMP AX, SOLO
+    JGE AB_SOLO                ; chegou no solo
+
+    ; colisao com o jipe (retangulos 2x4 e 20x10)
+    MOV CX, bombaX[BX]
+    ADD CX, BOMBA_W
+    CMP CX, jipeX
+    JLE AB_LIVRE
+    MOV CX, bombaX[BX]
+    MOV DX, jipeX
+    ADD DX, 20
+    CMP CX, DX
+    JGE AB_LIVRE
+    CMP AX, jipeY
+    JLE AB_LIVRE
+    MOV AX, bombaY[BX]
+    MOV DX, jipeY
+    ADD DX, 10
+    CMP AX, DX
+    JGE AB_LIVRE
+    JMP AB_ACERTOU
+
+AB_LIVRE:
+    DEC SI
+    JNZ AB_PASSO
+
+    ; ainda cai: desenha na nova posicao
+    MOV CX, bombaX[BX]
+    MOV DX, bombaY[BX]
+    PUSH BX
+    MOV BX, BOMBA_W
+    MOV SI, BOMBA_H
+    MOV AL, COR_BOMBA
+    CALL PREENCHER_RETANGULO
+    POP BX
+    JMP AB_PROX
+
+AB_ACERTOU:
+    MOV bombaAtiva[BX], 0
+    CALL PERDER_VIDA
+    JMP AB_PROX
+
+AB_SOLO:
+    MOV bombaAtiva[BX], 0
+
+AB_PROX:
+    ADD BX, 2
+    CMP BX, MAX_NAVES * 2
+    JAE AB_FIM
+    JMP AB_LOOP
+
+AB_FIM:
+    POP SI
+    POP DX
+    POP CX
+    POP BX
+    POP AX
+    RET
+ATUALIZAR_BOMBAS ENDP
 
 END MAIN
