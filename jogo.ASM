@@ -96,10 +96,9 @@ titulo11 DB '|_|   \__,_|\__|_|  \___/|_|', '$'
 
 jogarTxt  DB 'JOGAR', '$'
 sairTxt   DB 'SAIR', '$'
-;msgJogo   DB 'INICIANDO MOON PATROL...', '$'
-;msgVolta  DB 'Pressione qualquer tecla para voltar.', '$'
 msgSair   DB 'Obrigado por jogar!', '$'
 msgGameOver    DB 'GAME OVER', '$'
+msgScore       DB 'SCORE: ', '$'
 
 relogio_map DB 0, 0, 0Eh, 0Eh, 0Eh, 0, 0
             DB 0, 0Eh, 0Eh, 00h, 0Eh, 0Eh, 0
@@ -567,6 +566,17 @@ GAME_OVER:
     MOV DL, 15
     MOV SI, OFFSET msgGameOver
     CALL IMPRIMIR_TEXTO_COR
+    
+    MOV BL, 0Ch
+    MOV DH, 12
+    MOV DL, 15
+    MOV SI, OFFSET msgGameOver
+    CALL IMPRIMIR_TEXTO_COR
+
+    CALL DESENHAR_SCORE_FINAL  ; <-- nova linha
+
+    ; descarta teclas apertadas durante o jogo
+GO_LIMPA_TECLADO:
 
     ; descarta teclas apertadas durante o jogo
 GO_LIMPA_TECLADO:
@@ -2005,5 +2015,62 @@ DP_PRINT:
     POP AX
     RET
 DESENHAR_PONTOS ENDP
+
+; ============================================================
+; Rotina: DESENHAR_SCORE_FINAL
+; Escreve "SCORE: 00000" em branco, na linha 14, centralizado
+; (12 caracteres = 96 px, de x=112 a x=207, centro exato em 160)
+; ============================================================
+DESENHAR_SCORE_FINAL PROC NEAR
+    PUSH AX
+    PUSH BX
+    PUSH CX
+    PUSH DX
+    PUSH SI
+
+    ; limpa a area do score (96x8 px na linha 14)
+    MOV CX, 112
+    MOV DX, 112
+    MOV BX, 96
+    MOV SI, 8
+    XOR AL, AL
+    CALL PREENCHER_RETANGULO
+
+    ; rotulo "SCORE: "
+    MOV BL, 0Fh                ; branco
+    MOV DH, 14
+    MOV DL, 14
+    MOV SI, OFFSET msgScore
+    CALL IMPRIMIR_TEXTO_COR
+
+    ; separa os 5 digitos (o ultimo sai primeiro, por isso usa a pilha)
+    MOV AX, pontos
+    MOV BX, 10
+    MOV CX, 5
+DSF_DIV:
+    XOR DX, DX
+    DIV BX
+    PUSH DX
+    LOOP DSF_DIV
+
+    ; imprime do mais significativo ao menos, apos o rotulo (coluna 21)
+    MOV DH, 14
+    MOV DL, 21
+    MOV CX, 5
+DSF_PRINT:
+    POP AX
+    ADD AL, '0'
+    MOV BL, 0Fh                ; branco
+    CALL DESENHAR_CARACTERE_COR
+    INC DL
+    LOOP DSF_PRINT
+
+    POP SI
+    POP DX
+    POP CX
+    POP BX
+    POP AX
+    RET
+DESENHAR_SCORE_FINAL ENDP
 
 END MAIN
