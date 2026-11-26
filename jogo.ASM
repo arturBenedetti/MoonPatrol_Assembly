@@ -1628,18 +1628,6 @@ GERAR_GRUPO PROC NEAR
     XOR BX, BX                 ; indice em bytes
 
 GG_LOOP:
-    ADD AX, NAVE_DIST          ; a proxima precisa estar pelo menos 30 px abaixo
-    MOV yMinProx, AX
-
-    MOV CX, 60                 ; primeiro disparo entre 40 e 99 quadros
-    CALL RANDOM
-    ADD AX, 40
-    MOV naveTimer[BX], AX      ; agora BX = indice da nave atual
-
-    ADD BX, 2
-    INC SI
-    CMP SI, qtdGrupo
-    JB GG_LOOP
     ; max_y = NAVE_Y_MAX - NAVE_DIST * (naves que ainda faltam depois desta)
     MOV AX, qtdGrupo
     DEC AX
@@ -1657,8 +1645,13 @@ GG_LOOP:
     MOV naveX[BX], 320         ; entra pela direita
     MOV naveAtiva[BX], 1
 
-    ADD AX, NAVE_DIST          ; a proxima precisa estar pelo menos 30 px abaixo
+    ADD AX, NAVE_DIST          ; a proxima precisa estar 30 px abaixo
     MOV yMinProx, AX
+
+    MOV CX, 60                 ; primeiro disparo entre 40 e 99 quadros
+    CALL RANDOM
+    ADD AX, 40
+    MOV naveTimer[BX], AX
 
     ADD BX, 2
     INC SI
