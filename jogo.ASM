@@ -513,31 +513,21 @@ NAO_ESPACO:
 
 TECLA_ESQ:
     MOV AX, jipeX
-    MOV BX, AX                 ; BX = X antigo
     SUB AX, VELOCIDADE
     JNC ESQ_OK
     XOR AX, AX                 ; trava em 0
 ESQ_OK:
     MOV jipeX, AX
-    CMP estadoPulo, 2          ; no topo? acumula deslocamento
-    JNE LER_TECLAS
-    SUB BX, AX                 ; px realmente andados
-    ADD deslocTopo, BX
     JMP LER_TECLAS
 
 TECLA_DIR:
     MOV AX, jipeX
-    MOV BX, AX                 ; BX = X antigo
     ADD AX, VELOCIDADE
     CMP AX, LIMITE_X
     JBE DIR_OK
     MOV AX, LIMITE_X           ; trava na metade esquerda
 DIR_OK:
     MOV jipeX, AX
-    CMP estadoPulo, 2
-    JNE LER_TECLAS
-    SUB AX, BX                 ; px realmente andados
-    ADD deslocTopo, AX
     JMP LER_TECLAS
 
 TECLA_PULO:
@@ -566,9 +556,11 @@ PULO_SUBINDO:
     JMP REDESENHAR
 
 PULO_TOPO:
+    ADD deslocTopo, VEL_CHAO   ; o cenario andou VEL_CHAO px neste quadro
     CMP deslocTopo, DESLOC_TOPO
-    JB REDESENHAR              ; ainda nao andou o suficiente
-    MOV estadoPulo, 3          ; comeca a descer ja neste quadro
+    JB REDESENHAR              ; ainda nao andou 5 px: continua no topo
+    MOV estadoPulo, 3          ; completou 5 px: desce no proximo quadro
+    JMP REDESENHAR
 
 PULO_DESCENDO:
     ADD jipeY, VEL_PULO
@@ -1777,7 +1769,6 @@ ATUALIZAR_NAVES PROC NEAR
     XOR BX, BX
 
 AN_LOOP:
-    AN_LOOP:
     CMP naveAtiva[BX], 0
     JNE AN_ATIVA
 
