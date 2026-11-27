@@ -86,6 +86,18 @@ pontos         DW 0
 COR_PISO    EQU 0Eh          ; amarelo
 PISO_ALT    EQU 200 - SOLO   ; 30 linhas (Y = 170 a 199)
 
+MAX_CRAT    EQU 3
+CRAT_W      EQU 14
+CRAT_H      EQU 7
+CRAT_DIST   EQU 150          ; distancia minima entre crateras (px)
+VEL_CHAO    EQU 1            ; px por quadro (velocidade do cenario)
+
+crateraAtiva DW 0, 0, 0
+crateraX     DW 0, 0, 0
+crateraTipo  DW 0, 0, 0      ; 0, 2 ou 4 (indice em tabCrat, em bytes)
+gapCrat      DW 0            ; px ate a proxima cratera nascer
+modoCrat     DB 0            ; 0 = desenha, 1 = apaga
+
 ; Titulos sem espacos desnecessarios nas pontas (Carregamento ultra-rapido)
 titulo1  DB '__  __', '$'
 titulo2  DB '|  \/  |', '$'
@@ -275,6 +287,7 @@ cratera3_map DB 4, 4, 4, 7, 7, 7, 7, 7, 7, 7, 7, 4, 4, 4
              DB 6, 6, 6, 4, 6, 4, 4, 4, 4, 6, 6, 6, 6, 6
            
 tabNaves    DW OFFSET nave1_map, OFFSET nave2_map, OFFSET nave3_map
+tabCrat     DW OFFSET cratera1_map, OFFSET cratera2_map, OFFSET cratera3_map
 
 selecao DB 0
 animX   DW 10    ; Posicao X em pixels (0..319)
@@ -424,6 +437,11 @@ ABRIR_JOGO:
     MOV SI, PISO_ALT
     MOV AL, COR_PISO
     CALL PREENCHER_RETANGULO
+    
+    MOV crateraAtiva, 0
+    MOV crateraAtiva + 2, 0
+    MOV crateraAtiva + 4, 0
+    MOV gapCrat, 60            ; primeira cratera aparece logo
 
     ; Estado inicial
     MOV jipeX, 0
@@ -581,6 +599,7 @@ FIM_QUADRO:
     CALL ATUALIZAR_NAVES
     CALL ATUALIZAR_BOMBAS      ; disparos das naves
     CALL ATUALIZAR_TEMPO
+    CALL ATUALIZAR_CRATERAS
     CMP vidas, 0
     JNE TEM_VIDA
     JMP GAME_OVER              ; sem vidas
@@ -2148,5 +2167,128 @@ DSF_PRINT:
     POP AX
     RET
 DESENHAR_SCORE_FINAL ENDP
+
+; ============================================================
+; Rotina: DESENHAR_CRATERA_IDX   (BX = indice 0, 2, 4)
+; modoCrat = 0: desenha (cor 7 vira buraco preto)
+; modoCrat = 1: apaga, repintando com a cor do piso
+; Recorta nas bordas da tela
+; ============================================================
+DESENHAR_CRATERA_IDX PROC NEAR
+    PUSH AX
+    PUSH BX
+    PUSH CX
+    PUSH DX
+    PUSH SI
+    PUSH DI
+
+    MOV CX, crateraX[BX]
+    MOV DX, SOLO               ; topo da cratera no nivel do piso
+    MOV SI, crateraTipo[BX]
+    MOV DI, tabCrat[SI]
+    MOV SI, CRAT_H
+
+DC_LINHA:
+    PUSH CX
+    MOV BX, CRAT_W
+DC_COL:
+    CMP CX, 320                ; fora da tela (negativo ou >= 320)
+    JAE DC_PULA
+    CMP modoCrat, 0
+    JNE DC_APAGA
+    MOV AL, [DI]
+    CMP AL, 7
+    JNE DC_PLOT
+    XOR AL, AL                 ; interior da cratera: buraco preto
+    JMP DC_PLOT
+DC_APAGA:
+    MOV AL, COR_PISO
+DC_PLOT:
+    CALL PLOT_PIXEL
+DC_PULA:
+    INC CX
+    INC DI
+    DEC BX
+    JNZ DC_COL
+    POP CX
+    INC DX
+    DEC SI
+    JNZ DC_LINHA
+
+    POP DI
+    POP SI
+    POP DX
+    POP CX
+    POP BX
+    POP AX
+    RET
+DESENHAR_CRATERA_IDX ENDP
+
+; ============================================================
+; Rotina: ATUALIZAR_CRATERAS
+; Move as crateras ativas e cria uma nova quando gapCrat chega a 0
+; ============================================================
+ATUALIZAR_CRATERAS PROC NEAR
+    PUSH AX
+    PUSH BX
+    PUSH CX
+
+    XOR BX, BX
+AC_LOOP:
+    CMP crateraAtiva[BX], 0
+    JE AC_PROX
+
+    MOV modoCrat, 1            ; apaga na posicao antiga
+    CALL DESENHAR_CRATERA_IDX
+
+    SUB crateraX[BX], VEL_CHAO
+    CMP crateraX[BX], -CRAT_W  ; saiu totalmente pela esquerda?
+    JLE AC_SAIU
+
+    MOV modoCrat, 0            ; desenha na nova
+    CALL DESENHAR_CRATERA_IDX
+    JMP AC_PROX
+
+AC_SAIU:
+    MOV crateraAtiva[BX], 0
+
+AC_PROX:
+    ADD BX, 2
+    CMP BX, MAX_CRAT * 2
+    JB AC_LOOP
+
+    ; ---------- criacao ----------
+    SUB gapCrat, VEL_CHAO
+    CMP gapCrat, 0
+    JG AC_FIM                  ; ainda nao e hora
+
+    XOR BX, BX
+AC_BUSCA:                      ; procura uma vaga livre
+    CMP crateraAtiva[BX], 0
+    JE AC_ACHOU
+    ADD BX, 2
+    CMP BX, MAX_CRAT * 2
+    JB AC_BUSCA
+    JMP AC_FIM                 ; sem vaga: tenta de novo no proximo quadro
+
+AC_ACHOU:
+    MOV CX, 3                  ; tipo aleatorio (0..2)
+    CALL RANDOM
+    SHL AX, 1
+    MOV crateraTipo[BX], AX
+    MOV crateraX[BX], 320      ; entra pela direita
+    MOV crateraAtiva[BX], 1
+
+    MOV CX, 100                ; folga aleatoria (0..99)
+    CALL RANDOM
+    ADD AX, CRAT_W + CRAT_DIST ; largura da cratera + distancia minima
+    MOV gapCrat, AX
+
+AC_FIM:
+    POP CX
+    POP BX
+    POP AX
+    RET
+ATUALIZAR_CRATERAS ENDP
 
 END MAIN
