@@ -83,6 +83,9 @@ COL_PONTOS     EQU 17       ; coluna de texto (x = 17*8 = 136)
 PONTOS_NAVE    EQU 100
 pontos         DW 0
 
+COR_PISO    EQU 0Eh          ; amarelo
+PISO_ALT    EQU 200 - SOLO   ; 30 linhas (Y = 170 a 199)
+
 ; Titulos sem espacos desnecessarios nas pontas (Carregamento ultra-rapido)
 titulo1  DB '__  __', '$'
 titulo2  DB '|  \/  |', '$'
@@ -389,6 +392,14 @@ ABRIR_JOGO:
     MOV SI, 8
     MOV DI, OFFSET relogio_map
     CALL DESENHAR_SPRITE
+    
+    ; Desenha o piso amarelo (largura total da tela)
+    MOV CX, 0
+    MOV DX, SOLO
+    MOV BX, 320
+    MOV SI, PISO_ALT
+    MOV AL, COR_PISO
+    CALL PREENCHER_RETANGULO
 
     ; Estado inicial
     MOV jipeX, 0
