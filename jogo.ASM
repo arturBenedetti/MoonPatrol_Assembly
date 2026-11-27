@@ -23,7 +23,7 @@ LIMITE_X   EQU 140    ; metade da tela (160) - largura do jipe (20)
 
 CHAO         EQU 160   ; Y do jipe no chao
 ALTURA_PULO  EQU 15    ; altura maxima do pulo (px)
-VEL_PULO     EQU 3     ; px por quadro na subida e na descida
+VEL_PULO     EQU 1     ; px por quadro na subida e na descida
 DESLOC_TOPO  EQU 5     ; px horizontais que ele "fica" no topo
 estadoPulo   DB 0      ; 0 = chao, 1 = subindo, 2 = topo, 3 = descendo
 deslocTopo   DW 0      ; px andados na horizontal enquanto esta no topo
@@ -612,12 +612,6 @@ GAME_OVER:
     CALL PREENCHER_RETANGULO
 
     ; texto vermelho centralizado (coluna 15, linha 12)
-    MOV BL, 0Ch
-    MOV DH, 12
-    MOV DL, 15
-    MOV SI, OFFSET msgGameOver
-    CALL IMPRIMIR_TEXTO_COR
-    
     MOV BL, 0Ch
     MOV DH, 12
     MOV DL, 15
